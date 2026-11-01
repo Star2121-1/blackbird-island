@@ -39,7 +39,8 @@ SEATS = g["SEATS"]
 Debate = g["Debate"]
 HANGMAN = g["HANGMAN"]
 
-check("证据 10 条", len(EVIDENCE) == 10)
+check("证据表每条都有名字和正文",
+      all(e.name and e.brief and e.chapter for e in EVIDENCE.values()))
 check("座位 8 个 = 7 受邀 + 沈南舟", len(SEATS) == 8 and SEATS[0] == "沈南舟")
 
 d = Debate(SEATS, ROUND1)
@@ -71,7 +72,7 @@ check("王剑沉默", d.silence == 1 and d.seat_state("王剑") == "broken")
 check("打破不扣反驳机会", d.bullets == 2)
 d.select("time_window")
 d.rebut()
-check("同一句不能重复打破", d.silence == 1 and d.bullets == 1)
+check("同一句不能重复打破，也不白扣机会", d.silence == 1 and d.bullets == 2)
 
 # 5) 方廷
 while d.i != 3:
@@ -112,6 +113,39 @@ check("拼字是锁死的", HANGMAN["locked"] is True)
 # 10) 每条 breakable 发言的证据，切片里都拿得到
 need = {s.weak_to for s in ROUND1 if s.weak_to}
 check("破绽所需证据都在证据表里", need <= set(EVIDENCE))
+
+# 11) 后四夜的发言表：证据引用得存在，沉默数不得超过反驳机会
+def load_init(fname):
+    """把某个 .rpy 的 init python 块抽出来，接进同一个命名空间。"""
+    p = os.path.join(HERE, "game", fname)
+    s = io.open(p, encoding="utf-8").read()
+    m = re.search(r"^init (?:-1 )?python:\n((?:(?:    .*)?\n)*)", s, re.M)
+    body = "\n".join(l[4:] if l.startswith("    ") else l
+                     for l in m.group(1).split("\n"))
+    exec(compile(body, p, "exec"), g)
+
+
+for f in ("13_rounds_ab.rpy", "14_rounds_cd.rpy"):
+    load_init(f)
+
+ROUNDS = [("第二轮", g["ROUND2"], 4), ("第三轮", g["ROUND3"], 4),
+          ("第四轮", g["ROUND4"], 4), ("第五轮", g["ROUND5"], 4)]
+
+for nm, rows, bullets in ROUNDS:
+    ref = set()
+    for s in rows:
+        ref |= set([s.weak_to] if s.weak_to else [])
+        ref |= set(s.hears or [])
+        ref |= set(s.grants or [])
+    check(nm + "引用的证据都在证据表里", ref <= set(EVIDENCE))
+    sil = len([s for s in rows if s.weak_to and s.hit_kind == "silence"])
+    check(nm + "沉默数 " + str(sil) + " 不超过反驳机会", 0 < sil <= bullets)
+    check(nm + "每句都有落空时的话", all(s.miss for s in rows))
+    check(nm + "主人不被写成沉默",
+          not [s for s in rows if s.speaker == "沈南舟" and s.weak_to
+               and s.hit_kind == "silence"])
+    check(nm + "破绽句都配了打破后的话",
+          all(s.hit for s in rows if s.weak_to and s.hit_kind))
 
 print("")
 if fails:

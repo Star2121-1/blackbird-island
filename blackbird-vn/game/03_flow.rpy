@@ -15,8 +15,8 @@ label start:
     $ bb_silence_won = 0
     $ bb_silence_possible = 0
     $ round1 = Debate(SEATS, ROUND1)
-    # 第一夜是教学局，三次机会刚好够它那一处沉默。往后每夜三处可逼，
-    # 多给一次：错一次就封顶，玩家就没有"再试一句"的余地了。
+    # 抵对了不扣机会，`bullets` 数的是"允许判错几次"。
+    # 第一夜两处可逼、容错三次，是教学局；往后每夜三处，多给一次容错。
     $ round2 = Debate(SEATS, ROUND2, bullets=4, label="八仙桌 · 第二轮", head="第二夜 · 结算")
     $ round3 = Debate(SEATS, ROUND3, bullets=4, label="大厅 · 第三轮", head="第三夜 · 结算")
     $ round4 = Debate(SEATS, ROUND4, bullets=4, label="大厅 · 第四轮", head="第四夜 · 结算")

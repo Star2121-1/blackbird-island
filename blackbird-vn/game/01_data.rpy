@@ -217,6 +217,12 @@ init -1 python:
             if not self.selected:
                 self.message = "手里没有举起任何东西。反驳不成立。"
                 return
+            if self.i in self.broken:
+                # 这一句已经停过一次了。重听时再举一次不该扣机会——
+                # 名牌上的静默章是"这个人停过一次"，不是"他这一句也停过了"。
+                self.message = "这一句已经停过了。"
+                self.selected = None
+                return
             if s.weak_to and self.selected == s.weak_to and self.i not in self.broken:
                 self.broken[self.i] = s.hit_kind
                 if s.hit_kind == "silence":
