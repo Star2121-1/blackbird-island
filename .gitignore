@@ -1,0 +1,6 @@
+.workbuddy/
+.work/
+.work2/
+*.tmp
+Thumbs.db
+Desktop.ini
