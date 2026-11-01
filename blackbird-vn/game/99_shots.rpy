@@ -100,6 +100,43 @@ label shot_all:
     $ _shot("13_save")
     hide screen file_slots
 
+    # 收卷那一屏是玩家看到的最后一页，单独截一张。
+    $ _final = ["手里的证据 8 ／ 33 条。", "逼出的沉默 14 ／ 14 处。",
+                "第八个名字，我终究没有写下来。", "我没有指认谁。这本书不许我指认谁。"]
+    show screen bb_result(14, 14, _final, head="收卷", sub="合上的一页")
+    pause 2.4
+    $ _shot("17_final")
+    hide screen bb_result
+
+    # 往后的三张：都是这一轮补的交互，不在正文里点得到，只能摆出来看。
+    # ① 带"六日总账"那一行的结算页（第一夜不显示它，17 也不显示）。
+    $ bb_silence_won = 10
+    $ bb_silence_possible = 20
+    show screen bb_result(4, 6, ["四处沉默。还有两句话，说完了。", "主人没有沉默。他把问题推回我手上——那一条不算赢。"],
+                          head="第三夜 · 结算", sub="逼出来的停顿")
+    pause 2.4
+    $ _shot("18_result_cum")
+    hide screen bb_result
+
+    # ② 收轮前的确认框：bb_debate 那个按钮现在走 Confirm。
+    #    截的是 bb_confirm_panel（modal 的 confirm 会把 pause 卡住），底下垫真的桌子。
+    show screen bb_debate(round1)
+    pause 0.4
+    show screen bb_confirm_panel("结束这一轮？沉默按现在的数目记账。", Return(), Return())
+    pause 2.4
+    $ _shot("19_confirm")
+    hide screen bb_confirm_panel
+    hide screen bb_debate
+
+    # ③ 全停下来那一局的动作栏：要看得见"都停下来了"。
+    $ round1.silence = round1.silence_total
+    $ round1.message = ""
+    $ round1.selected = None
+    show screen bb_debate(round1)
+    pause 2.4
+    $ _shot("20_debate_done")
+    hide screen bb_debate
+
     $ renpy.end_replay()
     $ renpy.quit()
     return

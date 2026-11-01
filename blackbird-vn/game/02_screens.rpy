@@ -516,10 +516,13 @@ screen help():
         text "操　作" style "bb_label"
         use bb_key("点击 ／ 空格", "继续下一句")
         use bb_key("Ctrl", "快进")
-        use bb_key("Tab", "已读")
+        use bb_key("Tab", "把焦点挪到下一个按钮")
         use bb_key("Esc", "合上卷宗（菜单）")
         use bb_key("鼠标", "点座位＝跳到那个人身上")
         use bb_key("方向键 ／ 回车", "菜单、证据栏、名牌都能用键盘走")
+        # Tab 从来不是"已读"的快捷键——项目里没有 bind/keymap，它是焦点循环。
+        # 已读的话在右上角快捷栏的「日志」上，这里照实写。
+        use bb_key("右上角「日志」", "已读的话")
         text "记号单独开了一页，快捷栏上的\"图例\"直接跳到那里。" style "bb_micro" xsize 1000
 
 
@@ -595,11 +598,12 @@ screen bb_key(k, v):
 
 
 # ---------------- 确认框 ----------------
-screen confirm(message, yes_action, no_action):
-    modal True
+# 版面单独成一个屏：99_shots 里要截它。modal 的屏会把 pause 的超时事件吃掉
+# （pause 自己的屏在它下面），所以截图只能截不带 modal 的这一层。
+screen bb_confirm_panel(message, yes_action, no_action):
+    # 单看这一层没有 modal，截图时它要压在 zorder 60 的桌子上，自己也得有个高度。
+    # 在真玩法里它被 confirm 用 use 内联，两处同为 200，不改变层序。
     zorder 200
-    style_prefix "confirm"
-    add "#0b0d1099"
     frame:
         xsize 860
         xalign 0.5
@@ -612,8 +616,17 @@ screen confirm(message, yes_action, no_action):
         hbox:
             xalign 0.5
             spacing 18
-            textbutton "是" action yes_action style "bb_btn" text_style "bb_btn_text"
-            textbutton "否" action no_action style "bb_btn" text_style "bb_btn_text"
+            # 是／否 是 Ren'Py 的默认译法。"结束这一轮？——是" 读不通，改成动作本身。
+            textbutton "确　定" action yes_action style "bb_btn" text_style "bb_btn_text"
+            textbutton "取　消" action no_action style "bb_btn" text_style "bb_btn_text"
+
+
+screen confirm(message, yes_action, no_action):
+    modal True
+    zorder 200
+    style_prefix "confirm"
+    add "#0b0d1099"
+    use bb_confirm_panel(message, yes_action, no_action)
 
 
 # ---------------- 提示 ----------------
@@ -650,7 +663,8 @@ screen bb_card(chapter, title, sub, day="", snap=None):
         $ bb_trace("[AUTO] " + chapter + "·" + title)
         timer 0.05 action Return()
     use bb_page_bg()
-    button:
+    # default True：回车也算"点过了"。这一屏没有别的按钮，焦点不会跑丢。
+    button default True:
         xfill True
         yfill True
         background "#00000000"
@@ -793,12 +807,10 @@ screen bb_debate(d):
             xsize 300
             xalign 0.5
 
-    for k, name in enumerate(d.seats):
-        $ stt = d.seat_state(name)
-        use bb_seat(d, name, stt, SEAT_POS[k])
-
     # ---- 右轨：手里的证据。竖排一列，永远不占发言卡的横向空间 ----
     # 底边停在 760：右下动作面板的上沿在 776 左右，轨一长就压到"反　驳"上面。
+    # 这一段排在座位前面，为的是 Tab 的走位：先证据、再名牌、再动作。
+    # 两处都是锚定坐标，谁先画像素不动——改了顺序，画面要能逐位对上。
     frame:
         xsize 240
         xalign 0.95
@@ -830,6 +842,10 @@ screen bb_debate(d):
                         xysize (22, 22)
                         yalign 0.5
                     text e.name style "bb_ev_text" xsize 150 yalign 0.5
+
+    for k, name in enumerate(d.seats):
+        $ stt = d.seat_state(name)
+        use bb_seat(d, name, stt, SEAT_POS[k])
 
     # ---- 底栏三格：发言页 ／ 钉着的翻拍 ／ 动作 ----
     frame:
@@ -880,14 +896,19 @@ screen bb_debate(d):
         background BB_PAGE
         has vbox
         spacing 12
-        if d.selected:
+        if d.silence >= d.silence_total:
+            # "下一句"是循环的，永远点得动；全逼出来之后桌上没有任何地方说"可以收了"。
+            # 这一格本来只写举没举证据，收轮的话比它急，占它的位置。
+            text "都停下来了" style "bb_micro" color bb_rust
+        elif d.selected:
             text "抵上去" style "bb_micro" color bb_gold_dark
         else:
             text "（先举证据，再反驳）" style "bb_micro"
         textbutton "反　驳" action Return(("rebut", None)) style "bb_btn" text_style "bb_btn_text" xfill True:
             sensitive (d.selected is not None)
         textbutton "下一句" action Return(("next", None)) style "bb_btn" text_style "bb_btn_text" xfill True
-        textbutton "结束本轮" action Return(("end", None)) style "bb_btn" text_style "bb_btn_text" xfill True
+        # 收轮之后这一局就按现在的停顿记账，回不去了——一次误点不能再当没发生。
+        textbutton "结束本轮" action Confirm("结束这一轮？沉默按现在的数目记账。", Return(("end", None))) style "bb_btn" text_style "bb_btn_text" xfill True
 
     if d.message:
         # 批注是这一句的判词，摆在发言页原位：读完点一下，句子还在。
@@ -1015,6 +1036,13 @@ screen bb_result(silence, total, lines, head="第一轮 · 结算", sub="逼出�
         timer 0.05 action Return()
     use bb_page_bg()
     use bb_head(head, sub)
+    # 结算页也要"点哪儿都能走"：它是玩家看得最久的一屏。垫一张透明的整屏按钮，
+    # 后面的纸片、正文都不吃点击，点击会落回这一张。和扉页同一套写法。
+    button:
+        xfill True
+        yfill True
+        background "#00000000"
+        action Return()
 
     text str(silence) + " ／ " + str(total) xalign 0.44 yalign 0.40 xanchor 1.0 style "bb_hero"
     text "处沉默" xalign 0.465 yalign 0.455 style "bb_label" color bb_rust
@@ -1031,15 +1059,26 @@ screen bb_result(silence, total, lines, head="第一轮 · 结算", sub="逼出�
         # 上下各留一行小字的净空。
         yalign 0.50
 
+    # 正文用 area 钉在结算线下面。内容自适应高度的竖排挂 yalign 时，
+    # 行数一变，整块就往上长——收卷那页四行，第一行直接盖到"处沉默"上，
+    # 锈线从第二行中间穿过去。
     vbox:
-        xsize 1100
-        xalign 0.5
-        xanchor 0.5
-        yalign 0.60
+        area (410, 575, 1100, 360)
         spacing 16
         for ln in lines:
             text ln style "bb_body_sub" xsize 1100
-    textbutton "继续" xalign 0.5 yalign 0.90 action Return() style "bb_btn" text_style "bb_btn_text"
+    # 六日的总账只有在这一屏能看到。第一夜（total 就是全部）和收卷（total 就是
+    # 总账）不重复报——那一行只会把已经很大的数字再抄一遍。
+    if bb_silence_possible > total:
+        text "六日总账　" + str(bb_silence_won) + " ／ " + str(bb_silence_possible) + " 处" style "bb_micro" xalign 0.95 xanchor 1.0 yalign 0.905
+
+    hbox:
+        xalign 0.5
+        yalign 0.90
+        spacing 18
+        textbutton "继续" action Return() style "bb_btn" text_style "bb_btn_text" default True
+        text "点击任意处" style "bb_micro" yalign 0.5
+        text "→" style "bb_micro" yalign 0.5
 
 
 # ---------------- 证据图鉴 ----------------
