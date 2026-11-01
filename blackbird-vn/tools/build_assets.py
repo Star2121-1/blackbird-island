@@ -90,13 +90,33 @@ def key_out(src, tol=78.0, soft=2.0, bottom_cut=0.885):
         alpha = np.asarray(
             Image.fromarray(alpha).filter(ImageFilter.GaussianBlur(soft * 0.7)))
 
-    # 去溢色：贴边的像素里把品红分量往绿压
-    edge = ndimage.binary_dilation(bgmask, iterations=4) & ~bgmask
-    spill = edge & (a[:, :, 0] > a[:, :, 1] + 24) & (a[:, :, 2] > a[:, :, 1] + 18)
-    cap = a[:, :, 1] + 34
     out = a.astype(np.uint8).copy()
-    out[spill, 0] = np.minimum(out[spill, 0], cap[spill])
-    out[spill, 2] = np.minimum(out[spill, 2], cap[spill])
+
+    # 抠底留下的品红有两处，规则不一样，不能用一个阈值一起扫：
+    # 暖色头发和棕衣服的色相也偏红，宽阈值会把它们抹成邻域色。
+    #   A 软边：alpha 被高斯糊开的那一圈，RGB 还是原底色 → 按"离底色多远"判。
+    #   B 孤岛：泛洪只吃"连着边界"的背景色，夹在发丝之间的那几团留了下来。
+    #     底色不是标准品红（实测中位色约 (185,30,105)），所以按"离中位底色多远"判，
+    #     内部再收紧一档，免得把暖色头发和嘴唇一起抹掉。
+    fringe = (alpha > 0) & (alpha < 240) & (dist < tol * 1.9)
+    pocket = (dist < tol * 1.15) & ~bgmask
+    fix = fringe | pocket
+    good = (alpha > 240) & ~fix
+    if fix.any() and good.any():
+        # return_distances=False：默认会把距离矩阵排在第一个返回值前面。
+        near = ndimage.distance_transform_edt(
+            ~good, return_distances=False, return_indices=True)
+        out = np.where(fix[:, :, None], out[near[0], near[1]], out)
+
+    # 去溢色：底色渗进发丝是渐变，不是一整块，泛洪和换色都够不着它。
+    # 判据用"B 明显高于 G"——皮肤是 B<G、嘴唇是 B≈G，都不会被误伤；
+    # 压的是分量不是 alpha，发丝的明暗结构原样留着，只是不再发粉。
+    ro = out[:, :, 0].astype(np.int16)
+    go = out[:, :, 1].astype(np.int16)
+    bo = out[:, :, 2].astype(np.int16)
+    spill = (alpha > 0) & (bo > go + 20) & (ro > go + 30)
+    out[:, :, 0] = np.where(spill, np.clip(go + 34, 0, 255), ro).astype(np.uint8)
+    out[:, :, 2] = np.where(spill, np.clip(go + 26, 0, 255), bo).astype(np.uint8)
 
     rgba = np.dstack([out, alpha])
     return Image.fromarray(rgba, "RGBA")

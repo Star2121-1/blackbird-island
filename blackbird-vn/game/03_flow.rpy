@@ -10,8 +10,29 @@ label main_menu_screen:
     return
 
 
+# 冒烟测试开关：BB_AUTOPLAY=1 时，界面一律自己收掉，正文从头跑到尾。
+# 为的是让第二十章里的一句错别字级运行时错误也能被抓出来，而不是只截第一屏。
+default bb_auto = False
+
+init python:
+    def bb_trace(msg):
+        # 进度行。Ren'Py 做图像预测时不看 if 的条件，两个分支都走一遍，
+        # 所以这里挡掉预测——否则截图跑（bb_auto 是 False）也能打出 [AUTO]。
+        if not renpy.predicting():
+            print(msg)
+
+
 label start:
     $ have.clear()
+    $ bb_auto = bool(os.environ.get("BB_AUTOPLAY"))
+    if bb_auto:
+        # 界面会自己收掉，台词也得自己翻页，不然第一句就停住等点击。
+        # afm_enable 是"允许自动模式"总闸，只开 auto_forward 的话它不认。
+        $ preferences.afm_enable = True
+        $ preferences.auto_forward = True
+        $ preferences.afm_time = 0.01
+        $ preferences.text_cps = 100000
+        $ preferences.transitions = False
     $ bb_silence_won = 0
     $ bb_silence_possible = 0
     $ round1 = Debate(SEATS, ROUND1)
@@ -112,6 +133,8 @@ label ch1_hall:
 label bb_search(bg, place, spots):
     $ found = []
     $ leaving = False
+    if bb_auto:
+        $ bb_trace("[AUTO] explore " + place)
     scene expression bg
     while not leaving:
         $ hint = place + " —— 还有 " + str(len(spots) - len(found)) + " 处没有看过。看完才能走。" if len(found) < len(spots) else place + " —— 看完了。可以走了。"
@@ -241,6 +264,27 @@ label ch6:
 
 # ---------------- 沉默计数 ----------------
 label bb_debate_run(rt):
+    if bb_auto:
+        # 不启界面，把这一轮从头抵到尾：破绽句全部走一遍 rebut()，
+        # 让 seat_state／result_lines／grants 这些数据层分支也在冒烟测试里跑到。
+        # 要跑两遍——第一夜的死亡时间是听完林晚那句才到手，回头才抵得动王剑。
+        $ bb_trace("[AUTO] debate " + rt.label)
+        $ _pass = 0
+        while _pass < 2:
+            $ _n = len(rt.statements)
+            $ _k = 0
+            while _k < _n:
+                $ rt.i = _k
+                $ rt.hear_current()
+                $ _s = rt.statements[_k]
+                if _s.weak_to and _s.weak_to in have:
+                    $ rt.select(_s.weak_to)
+                    $ rt.rebut()
+                $ _k += 1
+            $ _pass += 1
+        $ rt.i = 0
+        $ rt.selected = None
+        return
     while not rt.done:
         $ rt.hear_current()
         call screen bb_debate(rt)
@@ -261,6 +305,8 @@ label bb_debate_run(rt):
 
 label bb_result_card(rt):
     # 六日的账要合到一处算，所以每结算一轮就往总账上记一笔。
+    if bb_auto:
+        $ bb_trace("[AUTO] result " + rt.head + " " + str(rt.silence) + "/" + str(rt.silence_total))
     $ bb_silence_won += rt.silence
     $ bb_silence_possible += rt.silence_total
     call screen bb_result(rt.silence, rt.silence_total, rt.result_lines(),
@@ -270,6 +316,8 @@ label bb_result_card(rt):
 
 # ---------------- 尾：合上手稿 ----------------
 label epilogue:
+    if bb_auto:
+        $ bb_trace("[AUTO] epilogue")
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十五日，夜里。"
@@ -294,4 +342,6 @@ label epilogue:
     $ tally.append("我没有指认谁。这本书不许我指认谁。")
     call screen bb_result(bb_silence_won, bb_silence_possible, tally,
                           head="收卷", sub="合上的一页")
+    if bb_auto:
+        $ renpy.quit()
     return

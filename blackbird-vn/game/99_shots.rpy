@@ -90,6 +90,11 @@ label shot_all:
     $ _shot("12_help")
     hide screen help
 
+    show screen bb_legend
+    pause 2.4
+    $ _shot("16_legend")
+    hide screen bb_legend
+
     show screen file_slots("存档")
     pause 2.4
     $ _shot("13_save")

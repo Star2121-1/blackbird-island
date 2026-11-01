@@ -219,7 +219,7 @@ screen quick_menu():
             textbutton "自动" action Preference("auto-forward", "toggle") style "bb_ev" text_style "bb_ev_text"
             textbutton "跳过" action Skip() alternate Skip(fast=True, confirm=True) style "bb_ev" text_style "bb_ev_text"
             textbutton "设置" action ShowMenu("preferences") style "bb_ev" text_style "bb_ev_text"
-            textbutton "图例" action ShowMenu("help") style "bb_ev" text_style "bb_ev_text"
+            textbutton "图例" action ShowMenu("bb_legend") style "bb_ev" text_style "bb_ev_text"
             textbutton "存" action ShowMenu("save") style "bb_ev" text_style "bb_ev_text"
             textbutton "菜单" action ShowMenu("navigation") style "bb_ev" text_style "bb_ev_text"
 
@@ -257,9 +257,7 @@ screen main_menu():
     text "一份没有结案的手稿。赢的方式不是指认谁，是逼出多少沉默。" xalign 0.065 yalign 0.525 xsize 780 style "bb_note"
 
     vbox:
-        xalign 0.95
-        xanchor 1.0
-        yalign 0.40
+        area (1520, 275, 320, 620)
         spacing 12
         if main_menu:
             use bb_tab_item("从第一日读起", Start())
@@ -267,6 +265,7 @@ screen main_menu():
             use bb_tab_item("回到刚才", Return())
         use bb_tab_item("证据图鉴", ShowMenu("bb_gallery"))
         use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
+        use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
         use bb_tab_item("设置", ShowMenu("preferences"))
         if not main_menu:
             use bb_tab_item("回到主菜单", ShowMenu("navigation"))
@@ -281,16 +280,15 @@ screen navigation():
     use bb_page_bg()
     use bb_head("卷宗", "合上的一页", "暂停")
     vbox:
-        xalign 0.95
-        xanchor 1.0
-        yalign 0.30
-        spacing 12
+        area (1520, 250, 320, 780)
+        spacing 8
         use bb_tab_item("继续读", Return())
         use bb_tab_item("存档", ShowMenu("save"))
         use bb_tab_item("读档", ShowMenu("load"))
         use bb_tab_item("已读的话", ShowMenu("history"))
         use bb_tab_item("证据图鉴", ShowMenu("bb_gallery"))
         use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
+        use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
         use bb_tab_item("设置", ShowMenu("preferences"))
         use bb_tab_item("回到主菜单", MainMenu(confirm=True))
         use bb_tab_item("退出游戏", Quit(confirm=True))
@@ -333,9 +331,10 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
         xalign 0.315
         yalign 0.575
         yanchor 0.5
+    # 侧栏用 area 钉死。xalign/yalign 的写法在这个界面里对不上——
+    # 内容自适应高度的容器，yalign 落点会往上跑，第一项顶到红头栏的标题上。
     vbox:
-        xalign 0.05
-        yalign 0.30
+        area (90, 250, 300, 760)
         spacing 12
         use bb_tab_item("继续读", Return())
         use bb_tab_item("存档", ShowMenu("save"))
@@ -343,6 +342,7 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
         use bb_tab_item("已读的话", ShowMenu("history"))
         use bb_tab_item("证据图鉴", ShowMenu("bb_gallery"))
         use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
+        use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
         use bb_tab_item("设置", ShowMenu("preferences"))
 
     frame:
@@ -520,14 +520,71 @@ screen help():
         use bb_key("Esc", "合上卷宗（菜单）")
         use bb_key("鼠标", "点座位＝跳到那个人身上")
         use bb_key("方向键 ／ 回车", "菜单、证据栏、名牌都能用键盘走")
+        text "记号单独开了一页，快捷栏上的\"图例\"直接跳到那里。" style "bb_micro" xsize 1000
 
-        text "纸上的记号" style "bb_label"
-        use bb_legend_row("金细边 ＋ 发言", "正在说话的那一位。")
-        use bb_legend_row("涂黑条 ＋ 静默角章", "逼出来的沉默。锈色只给这个。")
-        use bb_legend_row("虚线框 ＋ 反问角章", "主人把问题推回你手上。冷蓝只给这个。")
-        use bb_legend_row("回形针 ＋ 金标签", "手里的证据。举起来才会变色。")
-        use bb_legend_row("装订孔", "这个地方已经看过了。")
-        use bb_legend_row("铅笔字", "顾言笙的批注，不是手稿原文。")
+
+# ---------------- 图例：纸上的记号 ----------------
+# 记号不靠颜色区分——颜色在这套界面里只有一个意思。所以每一格摆真图：
+# 玩家在游戏里看到的和这里是同一张皮，不是对它的文字描述。
+screen bb_legend():
+    tag menu
+    use game_menu("纸上的记号", scroll="viewport"):
+        text "名　牌" style "bb_label"
+        use bb_legend_row(Frame("images/ui/frame_chip_sel.png", 14, 14), "", "发言",
+                          "金细边：正在说话的那一位。")
+        use bb_legend_row("images/ui/redaction.png", "images/ui/stamp_silence.png", "",
+                          "涂黑条＋角章：逼出来的沉默。锈色只此一处。")
+        use bb_legend_row(Frame("images/ui/frame_chip_rebut.png", 14, 14), "images/ui/stamp_rebut.png", "反问",
+                          "虚线框：主人把问题推回你手上。冷蓝只此一处。")
+        text "纸　片" style "bb_label"
+        use bb_legend_row("images/ui/clip.png", "", "",
+                          "回形针夹着的纸片：手里的证据，举起来才变色。", True)
+        use bb_legend_row("images/ui/hole.png", "", "",
+                          "装订孔：这个地方已经翻过了。", True)
+        use bb_legend_row("", "", "铅笔字",
+                          "铅笔灰是顾言笙的批注，不是手稿原文。")
+
+
+screen bb_legend_row(mark, stamp, word, note, fit=False):
+    # 六格两组标题，行高 74、组间距 18，加起来 618——视口 628，刚好不用滚。
+    # 说明文字一律压到一行：两行会顶穿这一格，和下一格叠在一起。
+    frame:
+        xsize 960
+        ysize 74
+        padding (10, 8)
+        background BB_SLIP
+        has hbox
+        spacing 24
+        # 样张一律关死在这一格里。原图比格子宽的（涂黑条就是）会顶到右边的说明文字上，
+        # 看起来像涂黑条压在字上——记号页自己先得干净。
+        fixed:
+            xsize 250
+            ysize 56
+            yalign 0.5
+            if mark:
+                if fit:
+                    add mark:
+                        xalign 0.5
+                        yalign 0.5
+                        ysize 50
+                else:
+                    add mark:
+                        xysize (200, 50)
+            if word:
+                text word:
+                    xalign 0.5
+                    yalign 0.5
+                    style "bb_body_sub"
+            if stamp:
+                add stamp:
+                    xysize (52, 52)
+                    xalign 1.0
+                    yalign 0.5
+                    anchor (1.0, 0.5)
+        text note:
+            yalign 0.5
+            xsize 660
+            style "bb_body_sub"
 
 
 screen bb_key(k, v):
@@ -535,13 +592,6 @@ screen bb_key(k, v):
         spacing 16
         text k xsize 240 style "bb_body_sub"
         text v style "bb_body_sub"
-
-
-screen bb_legend_row(mark, note):
-    hbox:
-        spacing 16
-        text mark xsize 380 style "bb_body_sub"
-        text note style "bb_body_sub"
 
 
 # ---------------- 确认框 ----------------
@@ -595,6 +645,10 @@ screen skip_indicator():
 screen bb_card(chapter, title, sub, day="", snap=None):
     zorder 100
     $ store.bb_day = day if day else store.bb_day
+    if store.bb_auto:
+        # 扉页是天然的进度标记：卡在这里，就是这一章的界面没被自动收掉。
+        $ bb_trace("[AUTO] " + chapter + "·" + title)
+        timer 0.05 action Return()
     use bb_page_bg()
     button:
         xfill True
@@ -638,16 +692,22 @@ screen bb_card(chapter, title, sub, day="", snap=None):
     hbox:
         xalign 0.26
         yalign 0.86
-        spacing 18
+        spacing 12
         text "点击继续" style "bb_micro"
-        add "images/ui/clip.png":
-            xysize (30, 46)
-            yalign 0.5
+        # 原来这里是一枚 30×46 的回形针，缩到卡片上只读得出一个竖条。
+        # 箭头用 → ——▶ 在这套字体里会被渲成彩色表情符号。
+        text "→" style "bb_micro"
 
 
 # ---------------- 探索：现场翻拍 ----------------
 screen bb_explore(bg, spots, found, hint):
     zorder 60
+    if store.bb_auto:
+        # 探索屏不能一把跳过：破绽句要用的证据就埋在这些坑里。
+        # 先把没看过的一个个点完，点干净了才离开。
+        $ _left = [s["id"] for s in spots if s["id"] not in found]
+        timer 0.05 action (Return(("leave", None)) if not _left
+                           else Return(("spot", _left[0])))
     add bg
 
     frame:
@@ -786,8 +846,10 @@ screen bb_debate(d):
             hbox:
                 xalign 1.0
                 spacing 8
-                add "images/ui/clip.png":
-                    xysize (18, 28)
+                # 用这条证据自己的图标，不用通用回形针：回形针缩到 18 像素
+                # 只读得出"一个竖条"，读不出举起来的是哪一件。
+                add "images/ui/ic_" + EV_ICON.get(d.selected, "page") + ".png":
+                    xysize (26, 26)
                     yalign 0.5
                 text EVIDENCE[d.selected].name style "bb_micro" color bb_gold_dark
         text bb_who(d.cur().speaker) style "say_who"
@@ -890,36 +952,49 @@ screen bb_seat(d, name, stt, p):
 # ---------------- 拼字：名单上被擦掉的一格 ----------------
 screen bb_hangman(hz, picked, msg):
     zorder 60
+    if store.bb_auto:
+        # 填满一次答案位，让"我没有看清"那条失败文案走一遍。
+        # 失败之后剧本会把 picked 清空重来——所以要认 msg，不认就永远拼不完。
+        $ bb_trace("[AUTO] hangman " + str(len(picked)))
+        timer 0.05 action (Return(("giveup", None)) if (msg or len(picked) >= hz["need"])
+                           else Return(("pick", hz["candidates"][len(picked)])))
     use bb_page_bg()
     use bb_head("名单", "第八个名字", "第十四章 · 书房")
 
-    text hz["prompt"] xalign 0.5 yalign 0.235 xsize 1200 text_align 0.5 style "bb_body_sub"
-
-    # 答案位和候选格都是 150 见方的纸片，两块挨着就读不出"哪个能点"。
-    # 全部改成顶对齐，中间留 28px 净缝；结算条和按钮各自往下沉一档。
-    hbox:
-        xalign 0.5
-        yalign 0.315
-        spacing 18
-        for i in range(hz["need"]):
-            frame:
-                xsize 150
-                ysize 150
-                padding (0, 0)
-                background BB_SLIP
-                if i < len(picked):
-                    text picked[i] xalign 0.5 yalign 0.5 size BB_T_HERO color bb_ink font bb_serif_b
-                else:
-                    text "？" xalign 0.5 yalign 0.5 size BB_T_TITLE color bb_pencil font bb_serif_b
-
-    grid 4 3:
-        xalign 0.5
-        yalign 0.48
-        spacing 12
-        for c in hz["candidates"]:
-            textbutton c action Return(("pick", c)) style "bb_slot" text_style "bb_btn_text":
-                xsize 150
-                ysize 104
+    # 三块内容改成一条竖排：提示、答案位、候选格。
+    # 各自 yalign 的写法在 1080 和实际渲染之间对不上，答案位的下沿被第一行
+    # 候选格压住，写进去的"陈"字缺了半笔。堆起来就不会重叠。
+    # 位置用 area 钉死：内容自适应高度的容器，yalign 的落点会往上跑，
+    # 答案位正好骑到红头栏那道锈线（205）上。
+    vbox:
+        area (360, 250, 1200, 620)
+        spacing 26
+        text hz["prompt"] xalign 0.5 xsize 1200 text_align 0.5 style "bb_body_sub"
+        hbox:
+            xalign 0.5
+            spacing 18
+            for i in range(hz["need"]):
+                frame:
+                    xsize 150
+                    ysize 150
+                    padding (0, 0)
+                    background BB_SLIP
+                    if i < len(picked):
+                        text picked[i] xalign 0.5 yalign 0.5 size BB_T_HERO color bb_ink font bb_serif_b
+                    else:
+                        text "？" xalign 0.5 yalign 0.5 size BB_T_TITLE color bb_pencil font bb_serif_b
+        grid 4 3:
+            xalign 0.5
+            spacing 12
+            for c in hz["candidates"]:
+                # 候选格是一个字，格子有 150 宽：用 label 形式的话字会顶在左边，
+                # 和上面居中的答案位对不上。改成显式的子件，自己居中。
+                button:
+                    action Return(("pick", c))
+                    style "bb_slot"
+                    xsize 150
+                    ysize 104
+                    text c xsize 130 text_align 0.5 xalign 0.5 yalign 0.5 style "bb_btn_text"
 
     if msg:
         frame:
@@ -936,6 +1011,8 @@ screen bb_hangman(hz, picked, msg):
 # ---------------- 结算 ----------------
 screen bb_result(silence, total, lines, head="第一轮 · 结算", sub="逼出来的停顿"):
     zorder 70
+    if store.bb_auto:
+        timer 0.05 action Return()
     use bb_page_bg()
     use bb_head(head, sub)
 
@@ -949,7 +1026,10 @@ screen bb_result(silence, total, lines, head="第一轮 · 结算", sub="逼出�
     add "images/ui/rule_rust.png":
         xsize 1100
         xalign 0.5
-        yalign 0.535
+        # 结算线要留在计数字和正文之间。贴着 0.535 放，正好压在第一行正文的
+        # 起笔上，读成一道删除线；0.485 又去顶"处沉默"的下沿。取中间这一档，
+        # 上下各留一行小字的净空。
+        yalign 0.50
 
     vbox:
         xsize 1100
