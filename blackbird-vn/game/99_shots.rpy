@@ -132,6 +132,9 @@ label shot_all:
     $ round1.silence = round1.silence_total
     $ round1.message = ""
     $ round1.selected = None
+    # 抵过的证据要在图上看得见装订孔。真的那一格（死亡时间）排在 EVIDENCE 表尾，
+    # 视口只装得下前七条——不点名摆两条靠前的，这个记号画没画谁也看不出来。
+    $ round1.spent = {"invite", "lock"}
     show screen bb_debate(round1)
     pause 2.4
     $ _shot("20_debate_done")

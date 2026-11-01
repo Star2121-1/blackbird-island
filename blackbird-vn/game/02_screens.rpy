@@ -536,14 +536,14 @@ screen bb_legend():
         use bb_legend_row(Frame("images/ui/frame_chip_sel.png", 14, 14), "", "发言",
                           "金细边：正在说话的那一位。")
         use bb_legend_row("images/ui/redaction.png", "images/ui/stamp_silence.png", "",
-                          "涂黑条＋角章：逼出来的沉默。锈色只此一处。")
+                          "涂黑条＋角章：逼出的沉默。锈色只此一处。")
         use bb_legend_row(Frame("images/ui/frame_chip_rebut.png", 14, 14), "images/ui/stamp_rebut.png", "反问",
                           "虚线框：主人把问题推回你手上。冷蓝只此一处。")
         text "纸　片" style "bb_label"
         use bb_legend_row("images/ui/clip.png", "", "",
                           "回形针夹着的纸片：手里的证据，举起来才变色。", True)
         use bb_legend_row("images/ui/hole.png", "", "",
-                          "装订孔：这个地方已经翻过了。", True)
+                          "装订孔：翻过的地点，和已经抵上过一句话的证据。", True)
         use bb_legend_row("", "", "铅笔字",
                           "铅笔灰是顾言笙的批注，不是手稿原文。")
 
@@ -743,7 +743,7 @@ screen bb_explore(bg, spots, found, hint):
         hbox:
             spacing 30
             text hint style "bb_body_sub" xsize BB_PAGE_W - 420
-            textbutton ("离开此处" if len(found) >= len(spots) else "还没看完") action Return(("leave", None)) style "bb_btn" text_style "bb_btn_text":
+            textbutton ("离开此处" if len(found) >= len(spots) else "还没看完") action Return(("leave", None)) style "bb_btn" text_style "bb_btn_text" xfill True default (len(found) >= len(spots)):
                 yalign 0.5
                 sensitive (len(found) >= len(spots))
 
@@ -801,7 +801,7 @@ screen bb_debate(d):
         yalign 0.36
         yanchor 0.5
         spacing 2
-        text "逼出的静默" style "bb_micro" xalign 0.5
+        text "逼出的沉默" style "bb_micro" xalign 0.5
         text str(d.silence) + " ／ " + str(d.silence_total) style "bb_hero" color bb_rust xalign 0.5
         add "images/ui/rule_rust.png":
             xsize 300
@@ -842,6 +842,13 @@ screen bb_debate(d):
                         xysize (22, 22)
                         yalign 0.5
                     text e.name style "bb_ev_text" xsize 150 yalign 0.5
+                    if e.id in d.spent:
+                        # 装订孔排在文字后面：文字是定宽 150，孔往前挪会推走图标，
+                        # 挪到后面则一个字都不动。到第四夜手里二十几条，
+                        # 没有这个记号，玩家就在三句话上赌二十几次记忆。
+                        add "images/ui/hole.png":
+                            xysize (20, 20)
+                            yalign 0.5
 
     for k, name in enumerate(d.seats):
         $ stt = d.seat_state(name)
@@ -870,6 +877,10 @@ screen bb_debate(d):
                 text EVIDENCE[d.selected].name style "bb_micro" color bb_gold_dark
         text bb_who(d.cur().speaker) style "say_who"
         text d.cur().text style "say_what" xsize 1020
+        if d.selected:
+            # 举起的那一条写了什么，就压在句子底下。原来写进批注框，而批注框与发言页
+            # 同位同尺寸——一选证据，正在抵的那句话就被摘要盖掉，玩家只能凭记忆按反驳。
+            text EVIDENCE[d.selected].brief style "bb_micro" color bb_gold_dark xsize 1020
         text "第 " + str(d.i + 1) + " ／ " + str(len(d.statements)) + " 句" style "bb_micro"
 
     frame:
@@ -912,17 +923,24 @@ screen bb_debate(d):
 
     if d.message:
         # 批注是这一句的判词，摆在发言页原位：读完点一下，句子还在。
-        frame:
-            xsize 1080
+        # 整块包成按钮——对白页、卡片、结算都铺了透明按钮，玩家已经被训练成
+        # "长得像一页纸的东西点一下就往下"；这张偏偏不响应，唯一的出口藏在最右侧。
+        button:
             xalign 0.05
             yalign 0.95
             yanchor 1.0
-            padding BB_PAD_PAGE
-            background BB_SLIP
-            has vbox
-            spacing 10
-            text "批　注" style "bb_micro" color bb_pencil
-            text d.message style "bb_body_sub" xsize 1000
+            padding (0, 0)
+            background "#00000000"
+            action Return(("read", None))
+            frame:
+                xsize 1080
+                padding BB_PAD_PAGE
+                background BB_SLIP
+                has vbox
+                spacing 10
+                text "批　注" style "bb_micro" color bb_pencil
+                text d.message style "bb_body_sub" xsize 1000
+                text "（点击批注收起，句子还在）" style "bb_micro" color bb_edge_txt xalign 1.0
 
 
 screen bb_seat(d, name, stt, p):

@@ -83,7 +83,7 @@ init -1 python:
     EV("cigarette", "两截烟灰",
        "他掐灭的时候手指很稳。烟灰落在袖口上，他没有管。", "第五章")
     EV("plaque_2013", "二〇一三那块牌",
-       "二〇一三年，王剑回到黑鸟岛，给那一块立过牌。到场是二〇一三，不是二〇〇九。", "第二十章")
+       "二〇一三年，王剑回到黑鸟岛，给那一块立过牌。到场是二〇一三，不是二〇〇九。", "第八章")
     EV("envelope", "一只信封",
        "照片和封装记录并折进去。沈南舟说：这个，留给该留的人。他没有递给谁。", "第二十三章")
 
@@ -140,7 +140,8 @@ init -1 python:
                   "我下车看了一眼，那个人还活着。我把他送到我诊所——他在路上就没了。",
                   weak_to="time_window",
                   hit="林晚的手指在膝盖上轻轻叩了几下。\n\n“死亡在十点之前，十点四十七，就不会有呼吸。”\n\n王剑没有说话。",
-                  hit_kind="silence"),
+                  hit_kind="silence",
+                  miss="王剑把同一句又说了一遍，一个字没有改。这一句，自首书对得上。"),
         Statement("林晚",
                   "官方记“当场死亡”。王剑的自首书，记“途中死亡”。都是事后的话。我父亲那版，是事前的。",
                   hears=["time_window"],
@@ -149,7 +150,8 @@ init -1 python:
                   "我二〇〇九年代理的是死者家属一方，负责和肇事方谈赔偿协议。",
                   weak_to="diary_fang",
                   hit="方廷停了一下。他没有说那份协议上的签字是谁的。\n\n沈南舟替他记着：是他签的字。",
-                  hit_kind="silence"),
+                  hit_kind="silence",
+                  miss="委托函摆在协议前面。他说的这一句，是一个律师的本分。"),
         Statement("赵寒",
                   "那晚我值班。经过大桥，站在桥上看了很久。没下车。",
                   miss="赵寒的烟盒还握在手里，没有点燃。他说的每一句都像已经称过分量。"),
@@ -161,7 +163,8 @@ init -1 python:
                   weak_to="invite",
                   grants=["phrase"],
                   hit="“需要听出这句话的人，自然会听出来。”\n\n主人不会沉默。他只是把问题推回到你手上。",
-                  hit_kind="counter"),
+                  hit_kind="counter",
+                  miss="主人不接我手里这一条。他把目光移到下一个人身上。"),
     ]
 
     class Debate(object):
@@ -188,6 +191,7 @@ init -1 python:
             self.selected = None
             self.message = ""
             self.broken = {}
+            self.spent = set()
             self.heard = set()
             self.done = False
 
@@ -209,8 +213,9 @@ init -1 python:
             return "idle"
 
         def select(self, eid):
+            # 举起证据不写批注：批注框压在发言页原位，一写就把正在抵的那句话盖掉，
+            # 玩家只能凭记忆按"反驳"。正文改由发言页右下角那行供读。
             self.selected = eid
-            self.message = EVIDENCE[eid].name + " —— " + EVIDENCE[eid].brief
 
         def rebut(self):
             s = self.cur()
@@ -232,6 +237,7 @@ init -1 python:
                 for g in s.grants:
                     ev_give(g)
                 self.message = s.hit
+                self.spent.add(self.selected)
                 self.selected = None
                 return
             self.bullets -= 1
@@ -248,6 +254,11 @@ init -1 python:
             if self.i + 1 >= len(self.statements):
                 self.passes += 1
                 self.i = 0
+                # 死亡时间在第一夜的第三节才到手，要用在第二节上——不回头就破不了。
+                # 桌上只写"第 2 遍在听"，第一次循环的人读不出那是给他的出口。
+                if self.passes == 1:
+                    self.message = ("一圈说完了。再听一遍——"
+                                    "有些句子要先听到后面，才知道前面缺什么。")
             else:
                 self.i += 1
 
@@ -265,13 +276,15 @@ init -1 python:
             L = []
             if self.silence == self.silence_total:
                 L.append(bb_cn(self.silence_total) + "处沉默，一处不多。")
-                L.append("沈南舟把照片一张一张收回盒子。他说：今天到这里。")
+                # 不写具体场景：木匣照片要到第十三章才摊开，"今天到这里"是第九章的话。
+                # 这一条五轮通用，写死任何一个动作都会和正文撞车。
+                L.append("该停的都停了。没有人再添一句话。")
             elif self.silence == 0:
                 L.append("没有人停下来。")
                 L.append("这一轮结束的时候，我一个字也没有问出来。")
             else:
-                L.append(bb_cn(self.silence) + " 处沉默。还有 "
-                         + bb_cn(self.silence_total - self.silence) + " 句话，说完了。")
+                L.append(bb_cn(self.silence) + "处沉默。还有"
+                         + bb_cn(self.silence_total - self.silence) + "句话，说完了。")
             if self.counters:
                 L.append("主人没有沉默。他把问题推回我手上——那一条不算赢。")
             if self.bullets <= 0:
@@ -307,7 +320,6 @@ init -1 python:
         "need": 2,
         "locked": True,
         "fail": "擦的顺序，自下而上。那不是污渍，是一个书写动作。\n\n我没有看清。",
-        "give_on_end": "erased8_note",
     }
 
     EV("erased8_note", "被擦掉的第八名",

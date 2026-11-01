@@ -292,6 +292,10 @@ label bb_debate_run(rt):
         $ arg = _return[1]
         if act == "select":
             $ rt.select(arg)
+        elif act == "read":
+            # 批注读完收起：判词留在纸上会挡住下一句的读法，但它不该被忘记——
+            # 句子本身还在原位，收掉的只有这一层。
+            $ rt.message = ""
         elif act == "rebut":
             $ rt.rebut()
         elif act == "next":

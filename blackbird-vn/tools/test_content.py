@@ -1,0 +1,175 @@
+# -*- coding: utf-8 -*-
+"""内容完整性与公平性自检：不启 Ren'Py，跨文件静态扫一遍全本。
+
+test_logic.py 验的是"一条发言链算得对不对"，这里验的是"整本摊开能不能走通"：
+
+- 证据表里每一条都要有地方拿得到（图鉴写着 33 条，拿不满就是骗人）。
+- 每一轮的破绽句，所用证据必须在那一夜之前就已经可拿到（拿不到就打不破，是坑玩家）。
+- 热点表里的每个 id 都要有对应的 spot_ 标签；定义了没人调的 spot_ 标签是死内容。
+- 五轮的沉默总数、句数、破绽数打出来，README 里那些数字要对着它。
+
+    python blackbird-vn/tools/test_content.py
+"""
+import glob
+import io
+import os
+import re
+import sys
+import types
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GAME = os.path.join(HERE, "game")
+
+CN_DAY = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6}
+
+# 文件级默认日序：正文文件各管一天。
+FILE_DAY = {
+    "03_flow.rpy": 1,
+    "05_day1_gap.rpy": 1,
+    "06_day2.rpy": 2,
+    "07_day3.rpy": 3,
+    "08_day4.rpy": 4,
+    "09_day5.rpy": 5,
+    "10_spots.rpy": 1,
+    "11_day6.rpy": 6,
+    "12_days.rpy": 1,
+}
+
+# 分节标题：# ---------------- 第三日 ---------------- / 第二夜
+HDR = re.compile(r"^#\s*-{2,}\s*第([一二三四五六])\s*[日夜]")
+GIVE = re.compile(r"ev_give\(\s*[\"']([a-z0-9_]+)[\"']\s*\)")
+SPOT_LABEL = re.compile(r"^label spot_([a-z0-9_]+)\s*:")
+SPOT_REF = re.compile(r"\{\"id\":\s*[\"']([a-z0-9_]+)[\"']")
+
+fails = []
+
+
+def check(name, cond):
+    if not cond:
+        fails.append(name)
+    print(("PASS " if cond else "FAIL ") + name)
+
+
+def info(msg):
+    print("     " + msg)
+
+
+# ---------------- 1) 把数据层的 init 块接进命名空间 ----------------
+def load_init(fname, g):
+    p = os.path.join(GAME, fname)
+    s = io.open(p, encoding="utf-8").read()
+    m = re.search(r"^init (?:-1 )?python:\n((?:(?:    .*)?\n)*)", s, re.M)
+    body = "\n".join(l[4:] if l.startswith("    ") else l
+                     for l in m.group(1).split("\n"))
+    exec(compile(body, p, "exec"), g)
+
+
+fake = types.ModuleType("renpy")
+fake.notify = lambda *a, **k: None
+fake.store = None
+sys.modules.setdefault("renpy", fake)
+g = {"renpy": fake}
+for f in ("01_data.rpy", "13_rounds_ab.rpy", "14_rounds_cd.rpy"):
+    load_init(f, g)
+
+EVIDENCE = g["EVIDENCE"]
+ROUNDS = [("第一夜", g["ROUND1"]), ("第二夜", g["ROUND2"]), ("第三夜", g["ROUND3"]),
+          ("第四夜", g["ROUND4"]), ("第五夜", g["ROUND5"])]
+
+# ---------------- 2) 静态扫全部 .rpy：取证点落在哪一天 ----------------
+# sites[eid] = 最早可拿到的那一天
+sites = {}
+spot_days = {}   # spot_<id> 定义在哪一天
+cur_label = None
+
+for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    fname = os.path.basename(p)
+    if fname.startswith(("00_", "02_", "04_", "99_")):
+        continue          # 样式／界面／图像注册／截图自检：不取证
+    day = FILE_DAY.get(fname, 0)
+    with io.open(p, encoding="utf-8") as f:
+        for line in f:
+            m = HDR.match(line)
+            if m:
+                day = CN_DAY[m.group(1)]
+                continue
+            m = SPOT_LABEL.match(line)
+            if m:
+                cur_label = m.group(1)
+                spot_days.setdefault(cur_label, day)
+                continue
+            for eid in GIVE.findall(line):
+                if eid not in sites or day < sites[eid]:
+                    sites[eid] = day
+
+# 发言表里的 hears／grants：听那句的当夜就到手；拼字收场的纸条同理。
+for idx, (nm, rows) in enumerate(ROUNDS, start=1):
+    for s in rows:
+        for eid in list(s.hears or []) + list(s.grants or []):
+            if eid not in sites or idx < sites[eid]:
+                sites[eid] = idx
+for eid in [v for v in (g.get("HANGMAN") or {}).get("give_on_end", "").split(",") if v]:
+    sites.setdefault(eid, 3)   # 第三章的拼字，第一夜之前就到
+
+# 热点表里引用的 id（spot_x 由 bb_search 调起）
+refs = set()
+for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    with io.open(p, encoding="utf-8") as f:
+        refs.update(SPOT_REF.findall(f.read()))
+
+# ---------------- 3) 断言 ----------------
+check("证据表非空（%d 条）" % len(EVIDENCE), len(EVIDENCE) >= 30)
+
+orphan = sorted(set(EVIDENCE) - set(sites))
+check("每一条证据都有拿得到的地方，无孤儿（缺 %d 条）" % len(orphan), not orphan)
+if orphan:
+    info("拿不到：" + "、".join(EVIDENCE[i].name + "(" + i + ")" for i in orphan))
+
+bogus = sorted(set(sites) - set(EVIDENCE))
+check("ev_give 没有发不存在的证据（多 %d 条）" % len(bogus), not bogus)
+if bogus:
+    info("表外：" + " ".join(bogus))
+
+# 破绽句用的证据，那一夜之前必须已经可拿到
+late = []
+for idx, (nm, rows) in enumerate(ROUNDS, start=1):
+    for s in rows:
+        if s.weak_to and sites.get(s.weak_to, 99) > idx:
+            late.append("%s：%s 要用 %s（第 %s 天才拿得到）"
+                        % (nm, s.speaker, EVIDENCE[s.weak_to].name, sites.get(s.weak_to)))
+check("每一轮的破绽句，所用证据当夜之前就已可拿到", not late)
+for x in late:
+    info(x)
+
+# 反问句不许用还没到手的证据
+late2 = [s for idx, (nm, rows) in enumerate(ROUNDS, start=1) for s in rows
+         if s.hit_kind == "counter" and s.weak_to and sites.get(s.weak_to, 99) > idx]
+check("主人的反问同样不吃未来的证据", not late2)
+
+dead = sorted(set(spot_days) - refs)
+check("没有定义了却没人调的热点（死内容 %d 个）" % len(dead), not dead)
+if dead:
+    info("死热点：" + " ".join(dead))
+
+missing = sorted(refs - set(spot_days))
+check("热点表里每个 id 都有对应的 spot_ 标签（缺 %d 个）" % len(missing), not missing)
+if missing:
+    info("缺标签：" + " ".join(missing))
+
+total = sum(len([s for s in rows if s.weak_to and s.hit_kind == "silence"])
+            for _, rows in ROUNDS)
+info("五轮合计：%s 句 / 破绽 %s 处" % (
+    "、".join(str(len(r)) for _, r in ROUNDS),
+    "、".join(str(len([s for s in r if s.weak_to and s.hit_kind == "silence"]))
+              for _, r in ROUNDS)))
+check("全六日沉默总数 %d 处（>0 且每夜至少 2 处）" % total,
+      total > 0 and all(len([s for s in r if s.weak_to and s.hit_kind == "silence"]) >= 2
+                        for _, r in ROUNDS))
+check("每条破绽句的 hit／miss 文案齐（由 test_logic 细验，这里只查总数）",
+      all(s.hit and s.miss for _, rows in ROUNDS for s in rows if s.weak_to))
+
+print("")
+if fails:
+    print("FAILED: %d" % len(fails))
+    sys.exit(1)
+print("all good")
