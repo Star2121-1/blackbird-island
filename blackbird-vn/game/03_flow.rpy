@@ -6,13 +6,21 @@
 
 # ---------------- 主菜单入口（Ren'Py 会找这个 label） ----------------
 label main_menu_screen:
-    call screen bb_main_menu
+    call screen main_menu
     return
 
 
 label start:
     $ have.clear()
+    $ bb_silence_won = 0
+    $ bb_silence_possible = 0
     $ round1 = Debate(SEATS, ROUND1)
+    # 第一夜是教学局，三次机会刚好够它那一处沉默。往后每夜三处可逼，
+    # 多给一次：错一次就封顶，玩家就没有"再试一句"的余地了。
+    $ round2 = Debate(SEATS, ROUND2, bullets=4, label="八仙桌 · 第二轮", head="第二夜 · 结算")
+    $ round3 = Debate(SEATS, ROUND3, bullets=4, label="大厅 · 第三轮", head="第三夜 · 结算")
+    $ round4 = Debate(SEATS, ROUND4, bullets=4, label="大厅 · 第四轮", head="第四夜 · 结算")
+    $ round5 = Debate(SEATS, ROUND5, bullets=4, label="东翼门外 · 第五轮", head="第五夜 · 结算")
     if os.environ.get("BB_SHOT"):
         jump shot_all
     jump story
@@ -29,13 +37,13 @@ label story:
     N "《黑岛证词》。作者自称陈默。"
     GU "读之前，我把规矩说清楚——"
     GU "这本书不许你指认谁。你要做的，是看能不能让说话的人停下来。"
-    call screen bb_card("序章", "翻开", "二〇二五年 · 杭州 · 顾言笙的调查笔记")
+    call screen bb_card("序章", "翻开", "二〇二五年 · 杭州 · 顾言笙的调查笔记", "二〇二五年十一月", BB_SNAP("bg_hangzhou.jpg"))
     jump ch1
 
 
 # ---------------- 第一章：抵达 ----------------
 label ch1:
-    call screen bb_card("第一章", "抵达", "我到达黑鸟岛的那天，天是灰的。")
+    call screen bb_card("第一章", "抵达", "我到达黑鸟岛的那天，天是灰的。", "十一月十七日", BB_SNAP("bg_dock.jpg"))
     scene bg_dock
     N "渡轮从舟山港出发，在海上颠簸了将近四个小时。甲板上只有我一个人——不，还有船老大。"
     N "他抽着烟，烟头在风中明灭，偶尔看我一眼，又迅速移开目光。"
@@ -63,7 +71,7 @@ label ch1:
 
 
 label ch1_hall:
-    call screen bb_card("第一章", "大厅", "大厅里已经有五个人了。")
+    call screen bb_card("第一章", "大厅", "大厅里已经有五个人了。", "十一月十七日", BB_SNAP("bg_hall_long.jpg"))
     scene bg_hall_long
     N "靠窗的位置坐着一个男人，穿黑色风衣，正在看手机。他抬头看了我一眼，眼神锐利得像刀。"
     show spr_zhao as talker at bb_talk_r
@@ -97,7 +105,7 @@ label ch1_hall:
     SHEN "十年前，我的儿子死于一起交通事故。肇事者逃逸，案件至今未破。"
     SHEN "而你们七个人，每一个，都与那起案件有着千丝万缕的联系。我不知道你们是否记得那些联系，但我想……你们会想起来的。"
     SHEN "晚餐后，我们来玩一个游戏。"
-    jump ch3
+    jump ch2
 
 
 # ---------------- 探索（取证） ----------------
@@ -168,7 +176,7 @@ label spot_diary:
 
 # ---------------- 第三章：书房 ----------------
 label ch3:
-    call screen bb_card("第三章", "书房", "名单上有八个名字。我辨认了其中七个。")
+    call screen bb_card("第三章", "书房", "名单上有八个名字。我辨认了其中七个。", "十一月十七日", BB_SNAP("bg_study.jpg"))
     scene bg_hall_long
     N "我在庄园里走了大约二十分钟。我把客人数了一遍。受邀的七位，来了七位。没有人缺席。"
     N "我把这个数先放一放。暂时，我没有对这一个数发问。"
@@ -186,12 +194,11 @@ label ch3:
     SU "但他也说过，任何人都可以参观。规矩是给人遵守的。也是给人打破的。"
     N "门没有锁。"
     call bb_search("bg_study", "书房 · 苏蔓在场", STUDY_SPOTS)
-    jump hangman_8
+    jump ch4
 
 
 # ---------------- 反谜题：第八个名字 ----------------
 label hangman_8:
-    call screen bb_card("名单", "第八个名字", "最后一个名字，我没看清。")
     $ picked = []
     $ msg = ""
     $ giving_up = False
@@ -205,14 +212,14 @@ label hangman_8:
                 $ msg = HANGMAN["fail"]
                 $ picked = []
     $ ev_give("erased8_note")
-    N "名单上的八个名字。岛上七个。"
-    N "第八个，我没有看清。这一句我写得很慢——今天的第一遍，它就是这个样子。"
-    jump ch6
+    N "第八个名字，被墨擦掉了。"
+    N "擦的顺序，自下而上。那不是污渍，是一个书写动作。"
+    return
 
 
 # ---------------- 第六章：大厅 · 第一轮 ----------------
 label ch6:
-    call screen bb_card("第六章", "大厅", "每人只有一次机会——说完就要等下一个人。")
+    call screen bb_card("第六章", "大厅", "每人只有一次机会——说完就要等下一个人。", "十一月十七日", BB_SNAP("bg_hall_ring.jpg"))
     scene bg_hall_ring
     N "九点的钟声敲响时，大厅里已经坐满了人。长桌被撤走，换成了环形沙发。八个人围坐，中间留着一张矮木几，几面空着。"
     show spr_shen as talker at bb_talk_r
@@ -229,7 +236,7 @@ label ch6:
     N "所有人说完之后，游戏才开始。规则是：举起一条证据，抵在一句话上。"
     call bb_debate_run(round1)
     call bb_result_card(round1)
-    jump epilogue
+    jump day1_pass
 
 
 # ---------------- 沉默计数 ----------------
@@ -253,7 +260,11 @@ label bb_debate_run(rt):
 
 
 label bb_result_card(rt):
-    call screen bb_result(rt.silence, rt.silence_total, rt.result_lines())
+    # 六日的账要合到一处算，所以每结算一轮就往总账上记一笔。
+    $ bb_silence_won += rt.silence
+    $ bb_silence_possible += rt.silence_total
+    call screen bb_result(rt.silence, rt.silence_total, rt.result_lines(),
+                          head=rt.head, sub=rt.sub)
     return
 
 
@@ -261,9 +272,26 @@ label bb_result_card(rt):
 label epilogue:
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
-    GU "第一日读到这里。"
-    GU "我没有拿到名字。我拿到的是几段停顿——谁在什么地方停下来，停多久。"
-    GU "手稿里写着：真相不在其中任何一人身上。"
-    GU "我原以为这是一句故弄玄虚的话。现在我怀疑它是这本书的规矩。"
-    call screen bb_card("切片结束", "筛子", "第八章以后，第八个名字仍然没有出现。")
+    N "顾言笙的调查笔记。十一月十五日，夜里。"
+    GU "把“我是不是”写成“我不知道”的那个人，藏在一个死掉的陈默后面。"
+    GU "他抹掉的，是他自己的名字。"
+    GU "无名指那一件，我把它翻了出来。"
+    GU "那张二〇〇九年的照片，原件，我从市档案馆借到了。借据，一页。"
+    GU "照片里，无名指，是直的。手稿第六章里，那只手，是弯的。"
+    GU "一个是二〇〇九，一个是二〇一九。中间，隔着十年。直变弯，十年里，也说得通。"
+    GU "另一种，是本来就不是同一只手。"
+    GU "两种读法。我倾向哪一种，我没有写下来。"
+    GU "那张纸条左角有一个笔画的钩，周亦安那册会徽本子的末页写着“陈是守望者之一”——苏蔓那句“同一只手”，比的是这两处的笔迹。"
+    GU "她没有做鉴定，她把两页并排比过，就这样说了。"
+    GU "这一步我信，但我只认到“同一只手”为止。我没有拿去问周亦安。"
+    GU "一问，我就得先把我这边查到的全交出去。留着“待查”，他不知道我查到哪儿。"
+    GU "十一月十二日我写“停”的那三件——封皮上缺掉的“鸟”字、那册倒填年份的日记、庄园里的两名仆从。这三件，我没有再补一个字。"
+    GU "停，也是一种答法。"
+    $ tally = []
+    $ tally.append("手里的证据 " + str(len(have)) + " ／ " + str(len(EVIDENCE)) + " 条。")
+    $ tally.append("逼出的沉默 " + str(bb_silence_won) + " ／ " + str(bb_silence_possible) + " 处。")
+    $ tally.append("第八个名字，我终究没有写下来。")
+    $ tally.append("我没有指认谁。这本书不许我指认谁。")
+    call screen bb_result(bb_silence_won, bb_silence_possible, tally,
+                          head="收卷", sub="合上的一页")
     return

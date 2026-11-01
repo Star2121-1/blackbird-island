@@ -25,3 +25,6 @@ blackbird-vn/dist/
 blackbird-vn/devscripts/
 blackbird-vn/devenv/
 blackbird-vn/rapt/
+
+# Python 缓存
+__pycache__/

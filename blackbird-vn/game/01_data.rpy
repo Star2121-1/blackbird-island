@@ -37,7 +37,67 @@ init -1 python:
     EV("phrase", "先杀后撞",
        "词是周亦安替沈南舟挑的。可邀请函上的五个字，是沈南舟自己写的。", "第六章")
 
+    # ---- 第二日至第五日陆续到手的 ----
+    EV("watch_badge", "守望者的绣标",
+       "盾形徽章，交叉钥匙加一条波浪线。缝在周亦安早年手抄册子的封皮内页，和照片上那人蹲着的袖口一样。", "第七章")
+    EV("east_wing_records", "东翼那一纸袋",
+       "赵寒撬开东翼取出的一牛皮纸袋：一年一叠的立牌记录。一个名字，一个现场，一个记号。", "第八章")
+    EV("cup_empty", "倒扣的空杯",
+       "八仙桌上八只杯，一人一只。七只满着正放；空的那只倒扣在正对门的位置，从来没有续过水。", "第九章")
+    EV("pos_c_sheet", "位置C的勘查页",
+       "从原卷宗抽出、边缘磨起毛的一页，折成四折。散场前收进桌下抽屉，第二天回到了桌上。", "第九章")
+    EV("handbook_blank", "手账的空白页",
+       "我这一夜，没有记一个字。那几页我又看了一遍。空白。", "第十章")
+    EV("door_mark", "门楣上的记号",
+       "一张便签，没有字。盾形，交叉的钥匙，盾底下一道波浪线。留给会认得它的人。", "第十章")
+    EV("plaque_record", "立牌的记录",
+       "一个名字，一个现场，一个记号。落款只有一个字：陈。", "第十一章")
+    EV("blank_sheet", "空白那张纸",
+       "背面一个字也没有。留下这一张的人，把名字空掉了。", "第十二章")
+    EV("face_photo", "木匣里的照片",
+       "黑白的。一个男人的脸，边角磨得起了毛。背面写着：陈默。", "第十三章")
+    EV("seal_rec", "封装记录",
+       "位置C的异物，只记了三条：发现、位置、封装人。没有第四条。", "第十四章")
+    EV("erased8_photo", "苏蔓拍的名单照片",
+       "墨擦的痕迹在照片里。她比我们更早看见了这件事。", "第十四章")
+    EV("blank_col", "空着的复核人一栏",
+       "二〇〇九年，这一栏是空的。没有填。", "第十五章")
+    EV("cable_cut", "断掉的信号缆",
+       "沿礁石埋着，线皮磨毛，一绞就断。从那天起，黑鸟岛和大陆再无连接。", "第十五章")
+    EV("bridge_count", "十二米，十八步",
+       "摆一具尸体要三十秒。剩下的至少四十六分半，他没有离开桥。", "第十六章")
+    EV("rope_stale", "旧缆桩的缆绳",
+       "小艇的缆绳是从旧缆桩上解开的。他没有出岛，傍晚缆绳还是解开的样子。", "第十七章")
+    EV("cup_mark", "压出杯印的浅纸",
+       "杯收走了，桌上多了一截浅白的纸。纸没有写字，只压出一个浅淡的杯印。", "第十八章")
+    EV("note_hand", "同一只手",
+       "那张纸条与“陈是守望者之一”那一行，同一只手——左角一个笔画的钩。", "第十八章")
+    EV("lock_half", "移了半寸的新锁",
+       "后半夜停电，林晚去东翼换保险丝。赵寒撬开的那道新锁向左移了半寸。柄是凉的。", "第十九章")
+
+    # ---- 第一日的纸袋，与终章摊开的旧物 ----
+    EV("wet_trail", "走廊的水渍",
+       "从书房方向延伸过来，尽头是一张被踩了一半的纸片。纸上只有一行字：他不是沈南舟。", "第二章")
+    EV("photos", "四张照片",
+       "桥、礁石、草丛，和一个蹲在草丛里挖东西的人。背面：位置C，距撞击点12米，发现异物。", "第四章")
+    EV("cigarette", "两截烟灰",
+       "他掐灭的时候手指很稳。烟灰落在袖口上，他没有管。", "第五章")
+    EV("plaque_2013", "二〇一三那块牌",
+       "二〇一三年，王剑回到黑鸟岛，给那一块立过牌。到场是二〇一三，不是二〇〇九。", "第二十章")
+    EV("envelope", "一只信封",
+       "照片和封装记录并折进去。沈南舟说：这个，留给该留的人。他没有递给谁。", "第二十三章")
+
     have = set()
+
+    BB_CN = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
+
+    def bb_cn(n):
+        """结算的散文行用汉字数，界面读数用阿拉伯数字——两套不能串。"""
+        if 0 <= n <= 10:
+            return BB_CN[n]
+        if n < 20:
+            return "十" + BB_CN[n - 10]
+        return str(n)
 
     def ev_give(eid):
         if eid not in have:
@@ -105,11 +165,16 @@ init -1 python:
     ]
 
     class Debate(object):
+        """label 是这一局摆在桌角的名目：哪一晚、第几轮。界面不自己猜。"""
 
-        def __init__(self, seats, statements, bullets=3):
+        def __init__(self, seats, statements, bullets=3, label="大厅 · 第一轮",
+                     head="第一轮 · 结算", sub="逼出来的停顿"):
             self.seats = seats
             self.statements = statements
             self.max_bullets = bullets
+            self.label = label
+            self.head = head
+            self.sub = sub
             self.silence_total = sum(
                 1 for s in statements if s.weak_to and s.hit_kind == "silence")
             self.reset()
@@ -132,7 +197,11 @@ init -1 python:
         def seat_state(self, name):
             for k, kind in self.broken.items():
                 if self.statements[k].speaker == name:
-                    return "broken" if kind == "silence" else "countered"
+                    # reveal 只是翻开一条信息，不是谁停下来，也不是主人反问——不给章。
+                    if kind == "silence":
+                        return "broken"
+                    if kind == "counter":
+                        return "countered"
             if self.done:
                 return "idle"
             if self.cur().speaker == name:
@@ -189,14 +258,14 @@ init -1 python:
         def result_lines(self):
             L = []
             if self.silence == self.silence_total:
-                L.append("三处沉默，一处不多。")
+                L.append(bb_cn(self.silence_total) + "处沉默，一处不多。")
                 L.append("沈南舟把照片一张一张收回盒子。他说：今天到这里。")
             elif self.silence == 0:
                 L.append("没有人停下来。")
-                L.append("第一轮结束的时候，我一个字也没有问出来。")
+                L.append("这一轮结束的时候，我一个字也没有问出来。")
             else:
-                L.append(str(self.silence) + " 处沉默。还有 "
-                         + str(self.silence_total - self.silence) + " 句话，说完了。")
+                L.append(bb_cn(self.silence) + " 处沉默。还有 "
+                         + bb_cn(self.silence_total - self.silence) + " 句话，说完了。")
             if self.counters:
                 L.append("主人没有沉默。他把问题推回我手上——那一条不算赢。")
             if self.bullets <= 0:
@@ -240,16 +309,71 @@ init -1 python:
 
     # ---------------- 探索热点（x/y 为屏幕比例） ----------------
     DOCK_SPOTS = [
-        {"id": "invite", "x": 0.18, "y": 0.66},
+        {"id": "invite", "x": 0.18, "y": 0.58},
         {"id": "hand", "x": 0.63, "y": 0.52},
     ]
 
     HALL_SPOTS = [
-        {"id": "lock", "x": 0.50, "y": 0.74},
+        {"id": "lock", "x": 0.50, "y": 0.62},
     ]
 
     STUDY_SPOTS = [
         {"id": "note", "x": 0.28, "y": 0.44},
         {"id": "roster", "x": 0.55, "y": 0.58},
         {"id": "diary", "x": 0.78, "y": 0.34},
+    ]
+
+    # ---- 第一日至第五日的取证点 ----
+    HALL_SPOTS_D1 = [
+        {"id": "wettrail", "x": 0.36, "y": 0.56},
+    ]
+
+    STUDY_SPOTS_D1 = [
+        {"id": "photos", "x": 0.44, "y": 0.46},
+        {"id": "cigarette", "x": 0.68, "y": 0.56},
+    ]
+
+    TABLE_SPOTS_D2 = [
+        {"id": "records", "x": 0.26, "y": 0.56},
+        {"id": "cups", "x": 0.46, "y": 0.48},
+        {"id": "sheet", "x": 0.68, "y": 0.42},
+    ]
+
+    CORRIDOR_SPOTS_D3 = [
+        {"id": "mark", "x": 0.30, "y": 0.34},
+        {"id": "handbook", "x": 0.68, "y": 0.52},
+    ]
+
+    TABLE_SPOTS_D3 = [
+        {"id": "plaque", "x": 0.36, "y": 0.50},
+        {"id": "blank", "x": 0.60, "y": 0.42},
+    ]
+
+    FACE_SPOT = [
+        {"id": "face", "x": 0.50, "y": 0.48},
+    ]
+
+    STUDY_SPOTS_D4 = [
+        {"id": "erased", "x": 0.48, "y": 0.46},
+    ]
+
+    TABLE_SPOTS_D4 = [
+        {"id": "blankcol", "x": 0.46, "y": 0.48},
+    ]
+
+    SHORE_SPOTS_D4 = [
+        {"id": "cable", "x": 0.36, "y": 0.58},
+    ]
+
+    DOCK_SPOTS_D5 = [
+        {"id": "rope", "x": 0.34, "y": 0.54},
+    ]
+
+    TABLE_SPOTS_D5 = [
+        {"id": "cupmark", "x": 0.42, "y": 0.48},
+        {"id": "notehand", "x": 0.66, "y": 0.42},
+    ]
+
+    WING_SPOTS_D5 = [
+        {"id": "lockhalf", "x": 0.52, "y": 0.44},
     ]
