@@ -20,12 +20,15 @@
 弹丸论破的圆桌裁决奖励"指出凶手"。这本书的地基是不可知——终稿不点名。
 所以本作的胜利条件是 **逼出多少沉默**：把一条证据抵在一句话上，让说话的人停下来。
 
-- 五轮对质，每轮 8～9 句话，其中只有 3～4 句留了破绽。打到几处算几处。
+- 五轮对质，合计 40 句话（7／9／8／8／8），留了破绽的是 2／3／3／3／3 句——
+  全六日一共 14 处沉默可逼。打到几处算几处。
 - 反驳机会：第一轮 3 次（教学局），往后每夜 4 次——多给一次，错一次还有余地。
 - 失败不改变真相，只改变收尾那几句话。
 - 沈南舟那一格是"反问"，不算赢：主人不会沉默，他把问题推回你手上。
-- 听完一轮可以点座位回到某个人身上重听。
-- 第三章的第八个名字是**反谜题**：无论怎么拼都拿不到，一律回"我没有看清"。
+- 死亡时间在第三句才到手，却要用在第二句上：一圈听完会自动回到第一句，
+  桌上写"第 2 遍在听"。也可以直接点名牌跳回某个人重听。
+- 第八个名字在第三章被读到（"我没有看清"），在第十四章正面出现时给玩家拼——
+  那是**反谜题**：无论怎么拼都拿不到，一律回"我没有看清"。
   这一屏是在教玩家——这本书不让你指认谁。
 
 ## 基调：界面就是那份卷宗
@@ -76,11 +79,15 @@ renpy.exe blackbird-vn compile  # 编译
 | `game/12_days.rpy` | 日与日之间的 2025 笔记 |
 | `game/13_rounds_ab.rpy` | 第二轮、第三轮发言表 |
 | `game/14_rounds_cd.rpy` | 第四轮、第五轮发言表 |
-| `game/99_shots.rpy` | 无头截图自检（临时屏，不参与正常流程，发布前删） |
+| `game/build.rpy` | 打包规则：截图屏／存档／缓存不进发行包 |
+| `game/99_shots.rpy` | 无头截图自检（临时屏，不参与正常流程；由 `build.rpy` 排除出包） |
 | `tools/build_assets.py` | 素材清洗：背景裁 1920×1080，立绘自适应抠品红底＋去溢色＋底边渐隐 |
-| `tools/build_ui_assets.py` | PIL 画界面硬件：桌环、席位点、规则线、图钉、回形针、勾选框 |
-| `tools/build_fonts.py` | 从 `fonts_src/` 的全量 Noto Sans CJK 裁出本作字表，写回 `game/fonts/`（16MB → 0.5MB） |
+| `tools/build_ui_assets.py` | PIL 画界面硬件：桌环、席位点、规则线、图钉、回形针、装订孔、角章 |
+| `tools/build_fonts.py` | 从 `fonts_src/` 的全量 Noto Sans CJK 裁出本作字表，写回 `game/fonts/`（16MB → 0.5MB）；顺带把 OFL 授权文本从源字体 name 表里取出来并排放好 |
+| `tools/build_icon.py` | 用静默章拼出 `game/icon.ico`（窗口图标），不另起美术 |
+| `tools/check_fonts.py` | 缺字闸门：`game/*.rpy` 里每个字都必须在对应字体 cmap 里，缺了就渲染成空白 |
 | `tools/check_verbatim.py` | 改编不变量：台词逐字可溯 + 三条体例 |
+| `tools/test_content.py` | 跨文件完整性：证据有没有孤儿、破绽证据当晚拿不拿得到、热点有没有死标签、每句有没有落空时的话 |
 | `tools/make_contact.py` | 把 `shots/` 拼成一张联络表，方便一次看全 |
 | `tools/test_logic.py` | 不启 Ren'Py，直接跑 `01_data.rpy` 里的对质逻辑 |
 
@@ -89,18 +96,39 @@ renpy.exe blackbird-vn compile  # 编译
 没有测试员，所以留了几条机器能跑的检查：
 
 ```
-python tools/test_logic.py                                      # 逻辑
-python tools/check_verbatim.py                                  # 改编不变量
-renpy.exe blackbird-vn lint                                     # 语法
-cd blackbird-vn/tools && python -c "import build_ui_assets as b; b.build_table(); b.build_hardware()"
-rm -f shots/*.png && RENPY_SKIP_MAIN_MENU=1 BB_SHOT=1 BB_SHOT_DIR=shots renpy.exe .
-python tools/make_contact.py 3                                  # shots/_contact.png
+python tools/test_logic.py          # 逻辑：反驳／沉默／循环／拼字
+python tools/test_content.py        # 跨文件完整性与公平性
+python tools/check_verbatim.py      # 改编不变量
+python tools/check_fonts.py         # 缺字（改完文案必须重跑）
+renpy.exe blackbird-vn lint         # 语法与未引用图像
+cd blackbird-vn && rm -f shots/*.png && RENPY_SKIP_MAIN_MENU=1 BB_SHOT=1 BB_SHOT_DIR=shots renpy.exe .
+python tools/make_contact.py 4      # shots/_contact.png
+cd blackbird-vn && RENPY_SKIP_MAIN_MENU=1 BB_AUTOPLAY=1 renpy.exe .   # 全六日无点击跑通，stdout 应只有 [AUTO] 行
 ```
 
-截图脚本只用 `show screen` + `pause`，不产生需要点击的交互。
-`bb_gallery` / `bb_settings` 是 modal 屏幕，`show screen` 配 `pause` 会互锁，抓不到——
-这两个面板只能手工开一次看。
+改了文案要先重跑 `python tools/build_fonts.py` 再跑 `check_fonts.py`：
+裁剪出来的字表是静态的，新字渲染成空白而不报错。
+
+截图脚本只用 `show screen` + `pause`，不产生需要点击的交互。唯一例外是确认框：
+`modal` 的屏会把 `pause` 自己的超时事件吃掉（它压在 modal 下面），两者互锁、脚本挂住——
+所以版面单独抽成不带 modal 的 `bb_confirm_panel`，`19_confirm` 截那一层。
 无头截图出来是 994×559，不是 1920×1080：量的是相对位置，不是像素。
+
+## 出包
+
+引擎本身没有 `dist` 这个命令——打包是 launcher 项目注册的 `distribute`：
+
+```
+renpy.exe <SDK 目录> distribute --no-update <本项目绝对路径>
+```
+
+产出在上一级的 `blackbird-dists/`：pc／win／mac／linux 四个包加一个 market 包。
+单个平台约 50MB，其中 40MB 是 Ren'Py 运行时（两个 dll）。
+`game/99_shots.rpy*`、`tools/`、`shots/`、`fonts_src/` 的字体原料由 `build.rpy` 排除，
+OFL 授权文本跟着子集字体一起进 `game/fonts/`。
+出完包要把 zip 的目录列出来核对，别只相信规则写上了——第一次就漏了
+`99_shots.rpyc`（规则只写了 `.rpy`），而挡整个 `fonts_src/` 目录会把里面的
+授权文本一起挡掉（打包器不再往里走，后面的放行规则轮不到）。
 
 ## 台词纪律
 

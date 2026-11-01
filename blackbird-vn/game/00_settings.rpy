@@ -29,6 +29,12 @@ init -1 python:
     config.default_afm_enable = True
     config.thumbnail_width = 232
     config.thumbnail_height = 122
+    # 窗口图标：一枚压在纸上的静默章，由 tools/build_icon.py 从现成素材拼出来，
+    # 不是一张独立的美术图——语义要和名牌上的角章是同一枚。
+    # 用 png 不用 ico：pygame 的 ico 解码读不了 256 那一条 PNG 压缩的目录项
+    # （"Unsupported ICO bitmap format"），整个建窗流程会挂在 GL 性能测试上。
+    # icon.ico 仍然生成，那是发行包里 Windows 可图标的料。
+    config.window_icon = "icon.png"
     # 回放的容量：一屏一句，六日读下来要能翻回第一日。
     config.history_length = 600
 

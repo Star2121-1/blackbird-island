@@ -66,7 +66,45 @@ def instance(src, dst, weight):
     f.save(dst)
 
 
+def name_record(path, name_id):
+    """源字体 name 表：1 号＝版权声明，13 号＝授权说明。"""
+    from fontTools import ttLib
+
+    f = ttLib.TTFont(path, lazy=True)
+    for rec in f["name"].names:
+        if rec.nameID == name_id:
+            return rec.toUnicode().strip()
+    return None
+
+
+def sync_licenses():
+    """OFL 要求授权文本跟着字体走。子集是裁出来的，字体本体不进版本库，
+    所以授权文本要落在 game/fonts/ 里和子集并排：版权声明取自源字体 name 表，
+    许可证正文取自随仓库带的 OFL-1.1.txt（逐字，不改写）。"""
+    body_path = os.path.join(OUT_DIR, "OFL-1.1.txt")
+    if not os.path.exists(body_path):
+        print("SKIP licenses (missing", body_path, ")")
+        return
+    with open(body_path, encoding="utf-8") as f:
+        body = f.read().strip()
+    for src_name, out_name, _weight in JOBS:
+        src = os.path.join(SRC_DIR, src_name)
+        if not os.path.exists(src):
+            continue
+        copyright_ = name_record(src, 1) or src_name
+        # 一个源裁出两个字面（常规／粗体）时，两边各自配一份：
+        # LICENSE-<字体名>.txt 和字体并排，看包的人不用再去想它对应哪一个。
+        dst = os.path.join(OUT_DIR, "LICENSE-" + os.path.splitext(out_name)[0] + ".txt")
+        with open(dst, "w", encoding="utf-8", newline="\n") as f:
+            f.write(copyright_ + "\n\n"
+                    "本字体是上列原字体的子集（按本作字表裁剪），授权不变：\n"
+                    "This Font Software is licensed under the SIL Open Font License, "
+                    "Version 1.1. The license is copied below.\n\n" + body + "\n")
+        print("LIC ", os.path.basename(dst), os.path.getsize(dst), "bytes")
+
+
 def main():
+    sync_licenses()
     text = glyph_text()
     print("glyphs:", len(text))
     if not os.path.isdir(OUT_DIR):
