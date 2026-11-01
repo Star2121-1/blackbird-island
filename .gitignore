@@ -4,3 +4,24 @@
 *.tmp
 Thumbs.db
 Desktop.ini
+
+# AI 生成的原始素材（中间产物，清洗后落在 blackbird-vn/game/images/）
+vibe_images/
+
+# 全量 CJK 字体（16MB×2，裁字后落在 blackbird-vn/game/fonts/）
+blackbird-vn/fonts_src/
+
+# Ren'Py 构建与运行时产物
+blackbird-vn/*.rpyc
+blackbird-vn/game/**/*.rpyc
+blackbird-vn/game/saves/
+blackbird-vn/game/cache/
+blackbird-vn/shots/
+blackbird-vn/run.log
+blackbird-vn/traceback.txt
+blackbird-vn/errors.txt
+blackbird-vn/log.txt
+blackbird-vn/dist/
+blackbird-vn/devscripts/
+blackbird-vn/devenv/
+blackbird-vn/rapt/

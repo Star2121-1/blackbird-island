@@ -1,0 +1,6 @@
+﻿name "黑鸟岛：筛子"
+version "0.1 垂直切片"
+url "https://github.com/Star2121-1/blackbird-island"
+about "改编自同名长篇推理小说《黑鸟岛》。垂直切片：第一章抵达 · 第三章书房 · 第六章大厅第一轮。\n核心机制不是指认真凶，而是逼出沉默。"
+exec_name "blackbird"
+save_directory "blackbird_island_saves"
