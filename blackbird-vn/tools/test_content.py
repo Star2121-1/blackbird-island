@@ -210,6 +210,34 @@ check("每段报了日期的杭州笔记都重盖了 HUD 日期（杭州景 %d �
 for b in no_stamp:
     info(b)
 
+# ---------------- 5) 热点不复述正文 ----------------
+# bb_search 的出口是"看完了才能走"，所以每个热点玩家都必须点开。热点里若整句抄回
+# 正文刚念过的那一句，就不是补充细节，是逼着人重读一遍——实测四处中招（空杯、水渍、
+# 照片袋、木匣那张脸），最长的一个热点只有一处可点，点下去全是重复。
+NARR = re.compile(r'^\s*N "((?:[^"\\]|\\.)+)"')
+NARR_UNESC = lambda t: t.replace("\\", "")
+
+
+def narr_lines(path):
+    out = []
+    for line in io.open(path, encoding="utf-8").read().split("\n"):
+        m = NARR.match(line)
+        if m:
+            out.append(NARR_UNESC(m.group(1)))
+    return out
+
+
+body = set()
+for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    if os.path.basename(p) != "10_spots.rpy":
+        body.update(narr_lines(p))
+
+dupes = ["热点复述正文：" + t for t in narr_lines(os.path.join(GAME, "10_spots.rpy"))
+         if len(t) >= 10 and t in body]   # 短句（"我认得它。"）是回声，不是复述
+check("热点不整句复述正文旁白（复述 %d 句）" % len(dupes), not dupes)
+for d in dupes:
+    info(d)
+
 print("")
 if fails:
     print("FAILED: %d" % len(fails))

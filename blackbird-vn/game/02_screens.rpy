@@ -261,12 +261,19 @@ screen main_menu():
         spacing 12
         if main_menu:
             use bb_tab_item("从第一日读起", Start())
+            # 翻到一半合上的人，下次开屏就该直接接着翻。以前标题屏没有这一条，
+            # 只能先"从第一日读起"（那是重开，会清空手里的证据）再按 Esc 找读档。
+            if bb_has_save():
+                use bb_tab_item("接着上次读", ShowMenu("load"))
         else:
             use bb_tab_item("回到刚才", Return())
         use bb_tab_item("证据图鉴", ShowMenu("bb_gallery"))
         use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
         use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
         use bb_tab_item("设置", ShowMenu("preferences"))
+        # about 屏一直在，只是没人进去过：本项目的菜单不用引擎默认的侧栏，
+        # 所以版本／改编说明要在这一列里自己给一个入口。
+        use bb_tab_item("这份卷宗", ShowMenu("about"))
         if not main_menu:
             use bb_tab_item("回到主菜单", ShowMenu("navigation"))
         use bb_tab_item("退出", Quit(confirm=True))
@@ -290,6 +297,7 @@ screen navigation():
         use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
         use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
         use bb_tab_item("设置", ShowMenu("preferences"))
+        use bb_tab_item("这份卷宗", ShowMenu("about"))
         use bb_tab_item("回到主菜单", MainMenu(confirm=True))
         use bb_tab_item("退出游戏", Quit(confirm=True))
 
@@ -344,6 +352,7 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
         use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
         use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
         use bb_tab_item("设置", ShowMenu("preferences"))
+        use bb_tab_item("这份卷宗", ShowMenu("about"))
 
     frame:
         xsize 1200
@@ -516,7 +525,7 @@ screen help():
         text "这本书不许你指认谁。你要做的，是看能不能让说话的人停下来。" style "bb_body_sub" xsize 1000
         text "举起一条证据，抵在一句话上。抵对了，那个人会停下来——那一段停顿就是这一局的结果。" style "bb_body_sub" xsize 1000
         text "抵错了用掉一次机会。第一夜三次，往后的每一夜四次——破绽越多，给的余地越大。" style "bb_body_sub" xsize 1000
-        text "主人不会沉默，他把问题推回你手上，那一条不算赢。" style "bb_body_sub" xsize 1000
+        text "主人不会沉默，他把问题推回你手上，那一条不算赢——但抵中他，会拿到他亲口承认的那一句。" style "bb_body_sub" xsize 1000
 
         text "操　作" style "bb_label"
         use bb_key("点击 ／ 空格", "继续下一句")
@@ -976,6 +985,11 @@ screen bb_seat(d, name, stt, p):
             if stt == "countered":
                 background Frame("images/ui/frame_chip_rebut.png", 14, 14)
             elif stt == "active":
+                background Frame("images/ui/frame_chip_sel.png", 14, 14)
+            elif stt == "broken" and d.cur().speaker == name:
+                # 已经停下来的那一位，回放圈里再次轮到他时，金细边照旧要点上——
+                # 图例写的是"金细边＝正在说话的那一位"，不能因为他停过就改口。
+                # 涂黑条留在名字上，两个记号各说各的。
                 background Frame("images/ui/frame_chip_sel.png", 14, 14)
             has fixed
             xysize (128, 40)

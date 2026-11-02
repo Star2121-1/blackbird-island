@@ -357,3 +357,13 @@ init python:
         if store.bb_auto:
             bb_trace("[PAGE] " + key)
         bb_sfx("page")
+
+
+# ---------- 标题屏的一条判据 ----------
+# 引擎里没有 FileAvailable() 这种屏函数（试过，报错），所以"有没有档"要自己问
+# loadsave。list_slots() 返回非空档位；存档目录空着的时候它是空表。
+init python:
+    from renpy.loadsave import list_slots as _list_slots
+
+    def bb_has_save():
+        return bool(_list_slots())
