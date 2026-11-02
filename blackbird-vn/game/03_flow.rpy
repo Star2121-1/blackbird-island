@@ -133,9 +133,17 @@ label ch1_hall:
 label bb_search(bg, place, spots):
     $ found = []
     $ leaving = False
-    if bb_auto:
-        $ bb_trace("[AUTO] explore " + place)
     scene expression bg
+    if bb_auto:
+        # 自动播放要把每一处热点都点掉。以前这里只打一行日志就走 "离开此处"，
+        # 于是全六日跑完手里只有正文给的证据——"三十三条收得齐"这件事
+        # 只被 test_content 静态查过，从来没被真跑过一遍。
+        $ bb_trace("[AUTO] explore " + place + " · 取证 " + str(len(spots)) + " 处")
+        $ auto_left = [s["id"] for s in spots]
+        while auto_left:
+            $ call_id = auto_left.pop(0)
+            call expression "spot_" + call_id
+        return
     while not leaving:
         $ hint = place + " —— 还有 " + str(len(spots) - len(found)) + " 处没有看过。看完才能走。" if len(found) < len(spots) else place + " —— 看完了。可以走了。"
         call screen bb_explore(bg, spots, found, hint)
@@ -345,6 +353,9 @@ label epilogue:
     $ tally.append("逼出的沉默 " + str(bb_silence_won) + " ／ " + str(bb_silence_possible) + " 处。")
     $ tally.append("第八个名字，我终究没有写下来。")
     $ tally.append("我没有指认谁。这本书不许我指认谁。")
+    if bb_auto:
+        $ bb_trace("[AUTO] 收账 证据 " + str(len(have)) + "／" + str(len(EVIDENCE))
+                   + " 沉默 " + str(bb_silence_won) + "／" + str(bb_silence_possible))
     call screen bb_result(bb_silence_won, bb_silence_possible, tally,
                           head="收卷", sub="合上的一页")
     if bb_auto:
