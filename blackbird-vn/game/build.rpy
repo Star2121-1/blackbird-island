@@ -18,6 +18,11 @@
 
 init python:
     build.name = "blackbird"
+    # 输出目录钉死。默认值是 "{directory_name}-dists"，而 directory_name 里带版本号——
+    # 以前 config.version 从没生效（options.txt 是死文件），包就落在 blackbird-dists/；
+    # 把 version 补成 1.0 的下一次出包直接改写到 blackbird-1.0-dists/ 去了，
+    # 旧目录原封不动躺在那儿，审计脚本对着五个过期包报 all good。
+    build.destination = "blackbird-dists"
 
     build.classify("game/99_shots.rpy*", None)
     build.classify("game/saves/**", None)

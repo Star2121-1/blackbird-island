@@ -11,10 +11,11 @@
 | --- | --- |
 | Windows | `blackbird.exe` |
 | macOS | `blackbird.app` |
-| Linux | `blackbird-linux/blackbird` |
+| Linux | `blackbird.sh` |
 
 macOS 首次打开若被拦下，在「访达」里按住 Control 点应用 →「打开」。
-Linux 若提示没有执行权限：`chmod +x blackbird blackbird.sh`。
+Linux 先给启动脚本执行权限再运行：`chmod +x blackbird.sh && ./blackbird.sh`。
+（包里没有叫 `blackbird` 的文件；那个名字是脚本内部启动的可执行体，不用直接碰。）
 
 ## 键位
 
@@ -22,9 +23,10 @@ Linux 若提示没有执行权限：`chmod +x blackbird blackbird.sh`。
 | --- | --- |
 | 鼠标点击 / 空格 / 回车 | 继续下一句 |
 | `Esc` | 菜单：存档、读档、设置、帮助 |
-| `Ctrl` | 快进已读过的部分 |
-| `Tab` | 快捷菜单 |
+| `Ctrl` | 快进 |
+| `Tab` | 跳过读过的句子（再按一次取消） |
 | 方向键 + 回车 | 对质时选中证据、举起、反驳 |
+| 右上角「日志」 | 回看说过的话 |
 | `S` | 截图 |
 
 游戏内按 `Esc` →「怎么读这份卷宗」有完整规则说明，第一次对质之前建议先看一眼。
@@ -37,13 +39,18 @@ Linux 若提示没有执行权限：`chmod +x blackbird blackbird.sh`。
 
 ## 存档位置
 
-Windows：`%APPDATA%/blackbird/saves`
-macOS：`~/Library/RenPy/blackbird/saves`
-Linux：`~/.renpy/blackbird/saves`
+Windows：`%APPDATA%\RenPy\blackbird_island_saves`
+macOS：`~/Library/RenPy/blackbird_island_saves`
+Linux：`~/.renpy/blackbird_island_saves`
+
+这一串名字写死在 `config.save_directory` 里，不跟着你把游戏解压成什么文件夹名走——
+改名、挪位置，存档还在原处。
 
 ## 授权
 
-字体为思源宋体（SIL Open Font License）与一款手写体，授权文本见 `LICENSE-*.txt`。
+字体为思源宋体（Noto Serif SC）、思源黑体（Noto Sans CJK SC）与马善政毛笔楷书
+（MaShanZheng），均为 SIL Open Font License 1.1；每个字体的授权文本与
+`OFL-1.1.txt` 随包在 `game/fonts/` 下。
 音效与全部背景、纸面贴图为本项目程序化合成，无外部素材。
 
 ## 关于本作

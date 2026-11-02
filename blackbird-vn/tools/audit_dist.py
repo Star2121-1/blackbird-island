@@ -13,6 +13,11 @@
 只查"不该有"会漏掉反方向：build.classify 手抖多排除一张背景图，包里干干净净，
 审计照报 all good，玩家进去才看见灰块。所以另一半是从源码树推出 game/ 该有哪些文件，
 少一个报一个；README 还要逐字对一遍——包里有 README.md 不等于有的是给玩家那一份。
+
+第三块闸门查 README 自己说没说实话（2026-11-02 加）：入口表里写的那个文件名，
+包里必须真有。Linux 那一行原本写 `blackbird`，实际只有 `blackbird.sh`——
+包内容审计全绿，玩家照着第一步就找不到能点的。表里的键位/路径这类声明没法机器核，
+但入口文件名可以，就先把能核的核掉。
 """
 
 import os
@@ -26,6 +31,8 @@ DEV_MARKERS = ("tools/", "99_shots", "shots/", "fonts_src", "_prev", "saves/",
 # 而当子串放行又咬不住 market 包里那种没有平台目录前缀的 "log.txt"。
 DEV_NAMES = ("log.txt", "traceback.txt", "requirements.txt")
 CACHE_OK = ("bytecode-", "build_info.json")
+# 打包时引擎自己在 game/ 里生成的，不是本项目漏的文件。
+GAME_GEN_OK = ("script_version.txt",)
 # 包里的 game/ 该有什么，直接从源码树推——写死数字会漂，
 # 而"漂了"在这条线上是静默的：少了一个背景图，包照样能开。
 GAME_SKIP_PREFIX = ("saves/", "cache/", "__pycache__/", "99_shots")
@@ -38,7 +45,9 @@ def entries(path):
             return [n.replace("\\", "/") for n in z.namelist()]
     if path.endswith(".tar.bz2"):
         with tarfile.open(path) as t:
-            return [m.name for m in t.getmembers()]
+            # 目录成员补上尾斜杠：tarfile 的 m.name 不带，而 zip 的 namelist 带。
+            # 不补的话 "game/audio" 这种目录条目会被当成"包里多出来的文件"报出去。
+            return [m.name + ("/" if m.isdir() else "") for m in t.getmembers()]
     return None
 
 
@@ -73,9 +82,45 @@ def expected_game():
     return out
 
 
+ENTRY_PLATFORMS = (("windows", "win"), ("macos", "mac"), ("linux", "linux"))
+
+
+def readme_entries():
+    """源码树 README 的入口表，{"win": "blackbird.exe", ...}。
+    只认两列的表格行，第二列拿反引号包住文件名。"""
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
+        text = f.read()
+    out = {}
+    for line in text.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) != 2:
+            continue
+        for plat, token in ENTRY_PLATFORMS:
+            if cells[0].lower() == plat:
+                out[token] = cells[1].strip("`").strip("/")
+    return out
+
+
+def top_names(names):
+    """包里面"玩家点开就能看见"的那一层：平台目录（blackbird-win/）下面直接放的
+    东西，以及 mac 那种顶层就是 blackbird.app 的。renpy/ 引擎层不算。"""
+    out = set()
+    for n in names:
+        parts = [p for p in n.replace("\\", "/").split("/") if p]
+        if not parts or parts[0] == "renpy":
+            continue
+        out.add(parts[0])
+        out.add("/".join(parts[:2]))
+        if len(parts) > 1:
+            out.add(parts[1])
+    return out
+
+
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else os.path.join("..", "blackbird-dists")
     want_game = expected_game()
+    want_entries = readme_entries()
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with open(os.path.join(here, "README.md"), "rb") as f:
         want_readme = f.read()
@@ -113,24 +158,40 @@ def main():
         grels = [r for r in (rel_game(n) for n in game) if r and not r.endswith("/")]
         got_game = set(grels)
         missing = sorted(want_game - got_game)
+        # 反方向也查：包里多出来的 game/ 文件（旧 options.txt、误留的 .bak 之外
+        # 的一切）。cache 与 saves 是引擎自己写的，不算。
+        extra = sorted(r for r in (got_game - want_game)
+                       if not r.startswith(("cache/", "saves/", "__pycache__/"))
+                       and os.path.basename(r) not in GAME_GEN_OK)
         readme = read_member(path)
         if readme is None:
             missing.append("README.md（包里根本没有）")
         elif readme != want_readme:
             missing.append("README.md（和源码树那份不一致：包旧于源，或塞了别的版本）")
+        # README 承诺的入口文件，这个包里必须有点得着的那一层。
+        # market 是三平台合体，三个入口都得在。包名带版本号（blackbird-1.0-market.zip），
+        # 所以按"名字里有没有这个平台"认，不按整串前缀认。
+        top = top_names(names)
+        for plat, fname in sorted(want_entries.items()):
+            if plat not in name and "market" not in name:
+                continue
+            if fname not in top and not any(t.endswith("/" + fname) for t in top):
+                missing.append("README 入口 %s 在这个包里找不到（玩家第一步就卡住）" % fname)
         fonts = len([r for r in grels
                      if r.startswith("fonts/") and r.lower().endswith((".ttf", ".otf"))])
 
         print("%-24s %5.1f MB  项目 %4d  game %3d  字体 %d  音频 %d  授权 %d"
-              "  漏 %d  缺 %d"
+              "  漏 %d  缺 %d  多 %d"
               % (name, size, len(proj), len(game), fonts, len(wav), len(lic),
-                 len(leaks), len(missing)))
+                 len(leaks), len(missing), len(extra)))
         for n in leaks:
             print("    LEAK", n)
         for n in missing:
             print("    MISSING", n)
-        bad_total += len(leaks) + len(missing)
-    print("all good" if bad_total == 0 else "%d 处该排除的没排掉／该带的没带上" % bad_total)
+        for n in extra:
+            print("    EXTRA", n)
+        bad_total += len(leaks) + len(missing) + len(extra)
+    print("all good" if bad_total == 0 else "%d 处该排除的没排掉／该带的没带上／README 说的文件不在" % bad_total)
     return 1 if bad_total else 0
 
 

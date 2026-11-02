@@ -20,7 +20,7 @@
 弹丸论破的圆桌裁决奖励"指出凶手"。这本书的地基是不可知——终稿不点名。
 所以本作的胜利条件是 **逼出多少沉默**：把一条证据抵在一句话上，让说话的人停下来。
 
-- 五轮对质，合计 40 句话（7／9／8／8／8），有东西能抵上去的是 21 句。
+- 五轮对质，合计 41 句话（8／9／8／8／8），有东西能抵上去的是 21 句。
   抵下去会让人停下来的一共 **11 句**（每夜 2／2／3／2／2）；其余 10 句里，5 句
   翻开一页就过去，5 句是沈南舟把问题推回来。打到几处算几处。
 - 反驳机会：第一轮 3 次（教学局），往后每夜 4 次——多给一次，错一次还有余地。
@@ -235,6 +235,12 @@ renpy.exe <项目目录> compile
 `traceback.txt`）。`compile` 单独跑十几秒，同样的错当场报，还不会留下半个包。
 
 产出在上一级的 `blackbird-dists/`：pc／win／mac／linux 四个包加一个 market 包。
+目录名是 `build.destination` 钉死的（默认值 `{directory_name}-dists` 里带版本号）：
+`config.version` 一旦从"从没生效"变成"1.0"，默认目录会悄悄变成
+`blackbird-1.0-dists/`，旧目录里那五个过期包还留在原地，审计脚本对着它们照样报
+all good——审计读的是目录，不是"最新的那一批"。包的文件名仍带版本
+（`blackbird-1.0-win.zip`），审计按名字里有没有 `win`／`mac`／`linux`／`market`
+认平台，不认整串前缀。
 加了声音之后 win 包 55MB、mac 64MB、linux 47MB，其中约 40MB 是 Ren'Py 运行时
 （两个 dll），8MB 是环境音。
 
@@ -243,6 +249,14 @@ Linux and Macintosh distributions on Windows is not supported"。这句吓不着
 实测解包看权限位，`blackbird.app/Contents/MacOS/blackbird` 和
 `blackbird-linux/.../blackbird` 都是 0755，可执行位带住了。它担心的是"更新已有的包"
 （要解开旧包再打回去），而 `--no-update` 走的是整包重写。
+
+游戏信息在 `game/options.rpy`，别再写成 `options.txt`：Ren'Py 只加载 `.rpy`，
+那份 txt 从来没生效过，于是 `config.name`／`config.version`／`config.save_directory`
+全是默认值——窗口标题取目录名，关于页"版本 "后面是空的，而存档目录退化成
+"解压出来那层文件夹叫什么就叫什么"（`renpy.py` 的 `path_to_saves`），玩家给文件夹
+改个名，存档就"丢"了。8.5.3 的 config 里没有 `url`／`about` 这两个变量，写上去
+lint 直接报 `not a known configuration variable`；项目自己的关于页在
+`02_screens.rpy` 的 `screen about`。
 
 出完包不要目测，跑审计：
 
@@ -259,6 +273,14 @@ python tools/audit_dist.py ../blackbird-dists
   `00build.rpy` 里把这两个精确名字标成了 `all`，是发行包的组成部分。本地 cache 里
   另外那几个（`py3analysis.rpyb`、`screens.rpyb`、`shaders.txt`）才是 `build.rpy`
   那条规则要挡掉的——所以审计查的是"cache 里除了这两样还有没有别的"，不是"有没有 cache"。
+- 包里的 game/ **多出来**的东西也报（`EXTRA`），只有一样例外：打包时引擎自己在
+  game/ 里生成的 `script_version.txt`。game/ 少文件会灰块，多文件是旧包／错规则留的，
+  两个方向都得响。
+- README 入口表里承诺的文件名（`blackbird.exe` / `blackbird.app` / `blackbird.sh`），
+  在对应那个包里必须真的在顶层。这条是补的教训：Linux 那行以前写 `blackbird`，
+  包内容审计全绿，玩家第一步就找不到能点的东西——"包里有没有 README"和
+  "README 说的是不是实话"是两件事。键位与存档路径没法机器核，改 README 时手动对
+  `config.keymap` 默认值和 `config.save_directory`。
 
 `game/99_shots.rpy*`、`tools/`、`shots/`、整个 `fonts_src/`、`game/saves/` 由
 `build.rpy` 排除，OFL 授权文本不依赖 `fonts_src/`——`build_fonts.py` 已经把它落到

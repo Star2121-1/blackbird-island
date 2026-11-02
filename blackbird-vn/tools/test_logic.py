@@ -94,7 +94,9 @@ d.rebut()
 check("举错证据掉一次机会", d.bullets == r1_bullets - 1 and d.silence == 0)
 
 # 3) 听完林晚那一句才拿到死亡时间
-while d.i != 2:
+# 定位一律按内容找，不按序号写死：往发言表中间插一句（第一轮就这么加过林晚的
+# 尸斑那句），序号版本会静默地测到别人身上去。
+while ROUND1[d.i].speaker != "林晚":
     d.advance()
 d.hear_current()
 check("听到林晚那句才拿到两版死亡时间", "time_window" in g["have"])
@@ -112,7 +114,7 @@ check("同一句不能重复打破，也不白扣机会",
       d.silence == 1 and d.bullets == r1_bullets - 1)
 
 # 5) 方廷
-while d.i != 3:
+while ROUND1[d.i].weak_to != "diary_fang":
     d.advance()
 ev_give("diary_fang")
 d.select("diary_fang")
@@ -120,7 +122,7 @@ d.rebut()
 check("方廷沉默", d.silence == 2 and d.silence_total == d.silence)
 
 # 6) 沈南舟是反问，不算赢
-while d.i != 6:
+while ROUND1[d.i].speaker != "沈南舟":
     d.advance()
 ev_give("invite")
 d.select("invite")
