@@ -257,14 +257,20 @@ screen main_menu():
     text "一份没有结案的手稿。赢的方式不是指认谁，是逼出多少沉默。" xalign 0.065 yalign 0.525 xsize 780 style "bb_note"
 
     vbox:
-        area (1520, 275, 320, 620)
+        # 右界 1504+320=1824＝5% 安全区的边界。原来从 1520 起栏，右边 16 像素压在
+        # 裁切区里；悬停朝右挪 14 之后落在 1818，还在界内。
+        area (1504, 275, 320, 620)
         spacing 12
         if main_menu:
             use bb_tab_item("从第一日读起", Start())
-            # 翻到一半合上的人，下次开屏就该直接接着翻。以前标题屏没有这一条，
-            # 只能先"从第一日读起"（那是重开，会清空手里的证据）再按 Esc 找读档。
+            # 翻到一半合上的人，下次开屏就该直接接着翻。引擎自己的 Continue()
+            # 读"最新的一份档"（含自动档），没档时自动变灰——以前这里挂的是读档页，
+            # 只存过自动档的人点进去看到的是十二个空格子。
+            use bb_tab_item("接着上次读", Continue())
+            # 挑格子读是另一件事：只有存在玩家手动存的档时才给这一条，
+            # 因为读档页的网格只列 1–12 号，自动档不在里面。
             if bb_has_save():
-                use bb_tab_item("接着上次读", ShowMenu("load"))
+                use bb_tab_item("挑一个存档读", ShowMenu("load"))
         else:
             use bb_tab_item("回到刚才", Return())
         use bb_tab_item("证据图鉴", ShowMenu("bb_gallery"))
@@ -287,7 +293,8 @@ screen navigation():
     use bb_page_bg()
     use bb_head("卷宗", "合上的一页", "暂停")
     vbox:
-        area (1520, 250, 320, 780)
+        # 同标题屏：右界压在 1824，底边 250+760=1010 也留在下安全区里。
+        area (1504, 250, 320, 760)
         spacing 8
         use bb_tab_item("继续读", Return())
         use bb_tab_item("存档", ShowMenu("save"))
@@ -341,8 +348,9 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
         yanchor 0.5
     # 侧栏用 area 钉死。xalign/yalign 的写法在这个界面里对不上——
     # 内容自适应高度的容器，yalign 落点会往上跑，第一项顶到红头栏的标题上。
+    # 左界 96＝安全区边界；栏右界 396，与正文框的左沿 590 之间隔着装订线 604。
     vbox:
-        area (90, 250, 300, 760)
+        area (96, 250, 300, 760)
         spacing 12
         use bb_tab_item("继续读", Return())
         use bb_tab_item("存档", ShowMenu("save"))
@@ -461,7 +469,7 @@ screen preferences():
 
         text "辅　助" style "bb_label"
         use bb_pref_toggle("朗读文本", Preference("self voicing", "toggle"))
-        text "对质：先按 Tab 或方向键选中证据，回车举起，再选“反　驳”。" style "bb_micro" xsize 1000
+        text "对质：先用方向键选中证据，回车举起，再选“反　驳”。" style "bb_micro" xsize 1000
 
         text "界面按 1920×1080 设计，所有元素留在 5% 安全区内；" style "bb_micro" xsize 1000
         text "窗口缩放由 Ren'Py 整体等比处理，不需要额外的边距滑杆。" style "bb_micro" xsize 1000
@@ -530,11 +538,12 @@ screen help():
         text "操　作" style "bb_label"
         use bb_key("点击 ／ 空格", "继续下一句")
         use bb_key("Ctrl", "快进")
-        use bb_key("Tab", "把焦点挪到下一个按钮")
+        use bb_key("Tab", "跳过读过的句子（再按一次取消）")
         use bb_key("Esc", "合上卷宗（菜单）")
         use bb_key("鼠标", "点座位＝跳到那个人身上")
         use bb_key("方向键 ／ 回车", "菜单、证据栏、名牌都能用键盘走")
-        # Tab 从来不是"已读"的快捷键——项目里没有 bind/keymap，它是焦点循环。
+        # 引擎里 Tab 只有一个用途：8.5.3 的 00keymap 把 K_TAB 绑在 toggle_skip 上，
+        # 挪焦点靠方向键。以前这里写"Tab 挪焦点"，玩家照做就开始跳过正文。
         # 已读的话在右上角快捷栏的「日志」上，这里照实写。
         use bb_key("右上角「日志」", "已读的话")
         text "记号单独开了一页，快捷栏上的\"图例\"直接跳到那里。" style "bb_micro" xsize 1000
@@ -825,7 +834,7 @@ screen bb_debate(d):
 
     # ---- 右轨：手里的证据。竖排一列，永远不占发言卡的横向空间 ----
     # 底边停在 760：右下动作面板的上沿在 776 左右，轨一长就压到"反　驳"上面。
-    # 这一段排在座位前面，为的是 Tab 的走位：先证据、再名牌、再动作。
+    # 这一段排在座位前面，为的是方向键的走位：先证据、再名牌、再动作。
     # 两处都是锚定坐标，谁先画像素不动——改了顺序，画面要能逐位对上。
     frame:
         xsize 240
@@ -1065,7 +1074,7 @@ screen bb_hangman(hz, picked, msg):
             padding BB_PAD_SLIP
             background BB_SLIP
             text msg style "bb_note" xsize 1180
-    textbutton "不拼了" xalign 0.5 yalign 0.955 yanchor 1.0 action Return(("giveup", None)) style "bb_btn" text_style "bb_btn_text"
+    textbutton "不拼了" xalign 0.5 yalign 0.95 yanchor 1.0 action Return(("giveup", None)) style "bb_btn" text_style "bb_btn_text"
 
 
 # ---------------- 结算 ----------------

@@ -173,3 +173,26 @@ init python:
             os.makedirs(d)
         ok = renpy.screenshot(os.path.join(d, tag + ".png"))
         renpy.notify("shot " + tag + " " + str(ok))
+
+# 封面自己抓一张。上面那批图是从 start 之后跑的，那时 main_menu 已经是 False，
+# 所以 01_menu 拍到的其实是暂停菜单——标题屏上"从第一日读起／接着上次读"那两条
+# 从来没有进过任何一张图。BB_SHOT_TITLE=1 时不跳主菜单，等屏幕亮定再截。
+init python:
+    if os.environ.get("BB_SHOT_TITLE"):
+        _bb_title_frames = [0]
+
+        def _bb_shot_title():
+            if not main_menu or not renpy.get_screen("main_menu"):
+                return
+            _bb_title_frames[0] += 1
+            if _bb_title_frames[0] < 20:
+                return
+            d = os.environ.get("BB_SHOT_DIR", "shots")
+            if not os.path.isabs(d):
+                d = os.path.join(renpy.config.basedir, d)
+            if not os.path.isdir(d):
+                os.makedirs(d)
+            renpy.screenshot(os.path.join(d, "00_title.png"))
+            renpy.quit()
+
+        config.periodic_callback = _bb_shot_title

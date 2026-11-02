@@ -211,6 +211,10 @@ style bb_slot is button:
     background Frame("images/ui/frame_chip.png", 14, 14)
     hover_background Frame("images/ui/frame_chip_hover.png", 14, 14)
     selected_background Frame("images/ui/frame_chip_sel.png", 14, 14)
+    # 悬停不能只靠"描边变粗"——存档格里挨着的十二格，谁被选中要一眼分得出，
+    # 所以给它挪位。网格间距 12，只挪 6，永远碰不到邻格。
+    hover_xoffset 6
+    hover_yoffset -6
 
 style bb_ev is button:
     padding (20, 9)
@@ -218,6 +222,8 @@ style bb_ev is button:
     hover_background Frame("images/ui/frame_chip_hover.png", 14, 14)
     selected_background Frame("images/ui/frame_chip_sel.png", 14, 14)
     insensitive_background Frame("images/ui/frame_chip.png", 14, 14)
+    # 证据栏右界压在安全区边界（xalign 0.95 anchor 1.0 = 1824），往右挪就出界，朝左挪。
+    hover_xoffset -10
 
 style bb_ev_text is bb_btn_text:
     size BB_T_LABEL
@@ -361,9 +367,15 @@ init python:
 
 # ---------- 标题屏的一条判据 ----------
 # 引擎里没有 FileAvailable() 这种屏函数（试过，报错），所以"有没有档"要自己问
-# loadsave。list_slots() 返回非空档位；存档目录空着的时候它是空表。
+# loadsave。list_slots() 返回非空档位——但它把引擎自己的槽也算进来：
+# 一次实测（全新存档目录）里它给了 18 条，全是 _tracesave-* 和 auto-*，
+# 一条玩家存的都没有。照搬 bool() 就等于"接着上次读"永远挂在标题屏上，
+# 点进去读档页却是十二个空格子。只认玩家那一种名字：纯数字，或"页-号"。
 init python:
     from renpy.loadsave import list_slots as _list_slots
 
+    def bb_is_user_slot(name):
+        return all(part.isdigit() for part in name.split("-"))
+
     def bb_has_save():
-        return bool(_list_slots())
+        return any(bb_is_user_slot(n) for n in _list_slots())
