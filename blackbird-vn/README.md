@@ -117,6 +117,7 @@ renpy.exe blackbird-vn compile  # 编译
 | `tools/build_audio.py` | 合成全部声音素材到 `game/audio/`：四条无缝循环环境音（频谱法）+ 四记音效，纯程序生成，不用一条录音 |
 | `tools/build_icon.py` | 用静默章拼出 `game/icon.ico` 和 `game/icon.png`；窗口图标用 png（pygame 读不了 ico 里 256 那条 PNG 压缩项），ico 留给 Windows 可执行文件 |
 | `tools/check_fonts.py` | 缺字闸门：`game/*.rpy` 里每个字都必须在对应字体 cmap 里，缺了就渲染成空白 |
+| `tools/audit_dist.py` | 出包审计：逐个数包里的项目条目、音频、授权，并把该排除的东西报出来 |
 | `tools/check_verbatim.py` | 改编不变量：台词逐字可溯 + 三条体例 |
 | `tools/test_content.py` | 跨文件完整性：证据有没有孤儿、破绽证据当晚拿不拿得到、热点有没有死标签、每句有没有落空时的话、报了日期的笔记有没有重盖 `bb_day` |
 | `tools/make_contact.py` | 把 `shots/` 拼成一张联络表，方便一次看全 |
@@ -160,13 +161,31 @@ renpy.exe <SDK 目录> distribute --no-update <本项目绝对路径>
 ```
 
 产出在上一级的 `blackbird-dists/`：pc／win／mac／linux 四个包加一个 market 包。
-单个平台约 50MB，其中 40MB 是 Ren'Py 运行时（两个 dll）。
-`game/99_shots.rpy*`、`tools/`、`shots/`、整个 `fonts_src/` 由 `build.rpy` 排除，
-OFL 授权文本不依赖 `fonts_src/`——`build_fonts.py` 已经把它落到 `game/fonts/LICENSE-*.txt`，
-跟着子集字体一起进包。
-出完包要把 zip 的目录列出来核对，别只相信规则写上了——第一次就漏了
-`99_shots.rpyc`（规则只写了 `.rpy`）。另外记着：分类成 `None` 的整目录会让打包器
-不再往里走，排在它后面的"放行"规则轮不到，所以放行要写在排除前面。
+加了声音之后 win 包 55MB、mac 64MB、linux 47MB，其中约 40MB 是 Ren'Py 运行时
+（两个 dll），8MB 是环境音。
+
+出完包不要目测，跑审计：
+
+```
+python tools/audit_dist.py ../blackbird-dists
+```
+
+它列每个包的项目侧条目、game 文件数、音频数、授权数，并把该排除的东西逐条报出来。
+两条实测得来的判据：
+
+- `renpy/**/__pycache__` 有 180 多项，那是引擎自己带的，不算漏——所以只审 `renpy/`
+  那一层之外的条目。
+- `game/cache/` 里会留下 `bytecode-312.rpyb` 和 `build_info.json`：SDK 在
+  `00build.rpy` 里把这两个精确名字标成了 `all`，是发行包的组成部分。本地 cache 里
+  另外那几个（`py3analysis.rpyb`、`screens.rpyb`、`shaders.txt`）才是 `build.rpy`
+  那条规则要挡掉的——所以审计查的是"cache 里除了这两样还有没有别的"，不是"有没有 cache"。
+
+`game/99_shots.rpy*`、`tools/`、`shots/`、整个 `fonts_src/`、`game/saves/` 由
+`build.rpy` 排除，OFL 授权文本不依赖 `fonts_src/`——`build_fonts.py` 已经把它落到
+`game/fonts/LICENSE-*.txt`，跟着子集字体一起进包。
+别只相信规则写上了——第一次就漏了 `99_shots.rpyc`（规则只写了 `.rpy`）。另外记着：
+分类成 `None` 的整目录会让打包器不再往里走，排在它后面的"放行"规则轮不到，
+所以放行要写在排除前面。
 
 ## 台词纪律
 
