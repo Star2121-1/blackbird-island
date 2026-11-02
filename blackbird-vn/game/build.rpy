@@ -28,11 +28,12 @@ init python:
     build.classify("**.bak", None)
     build.classify("**.orig", None)
 
-    # 全量源字体是裁字表的原料，游戏用的是 game/fonts/ 里的子集（0.5MB×5）。
-    # 只挡字体二进制，不挡 fonts_src/ 整目录：挡整目录的话打包器根本不再往里走，
-    # 后面那条"放行 LICENSE"就没有机会命中——实测少掉了授权文本。
-    build.classify("fonts_src/**.ttf", None)
-    build.classify("fonts_src/**.otf", None)
+    # 全量源字体是裁字表的原料，游戏用的是 game/fonts/ 里的子集（0.5MB×5），
+    # 授权文本也已经在 build_fonts.py 里落到 game/fonts/LICENSE-*.txt 了，
+    # 所以整个 fonts_src/ 都不用进包（里面只剩一张字表 glyphs.txt 和源许可原件）。
+    # 提醒：分类成 None 的整目录会让打包器不再往里走——想在这条之后再"放行"
+    # 其中的文件是没有用的，实测过。要放行就得排在它前面。
+    build.classify("fonts_src/**", None)
 
     build.documentation("*.md")
     build.documentation("LICENSE*")

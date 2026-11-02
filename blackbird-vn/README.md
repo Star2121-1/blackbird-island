@@ -124,11 +124,12 @@ renpy.exe <SDK 目录> distribute --no-update <本项目绝对路径>
 
 产出在上一级的 `blackbird-dists/`：pc／win／mac／linux 四个包加一个 market 包。
 单个平台约 50MB，其中 40MB 是 Ren'Py 运行时（两个 dll）。
-`game/99_shots.rpy*`、`tools/`、`shots/`、`fonts_src/` 的字体原料由 `build.rpy` 排除，
-OFL 授权文本跟着子集字体一起进 `game/fonts/`。
+`game/99_shots.rpy*`、`tools/`、`shots/`、整个 `fonts_src/` 由 `build.rpy` 排除，
+OFL 授权文本不依赖 `fonts_src/`——`build_fonts.py` 已经把它落到 `game/fonts/LICENSE-*.txt`，
+跟着子集字体一起进包。
 出完包要把 zip 的目录列出来核对，别只相信规则写上了——第一次就漏了
-`99_shots.rpyc`（规则只写了 `.rpy`），而挡整个 `fonts_src/` 目录会把里面的
-授权文本一起挡掉（打包器不再往里走，后面的放行规则轮不到）。
+`99_shots.rpyc`（规则只写了 `.rpy`）。另外记着：分类成 `None` 的整目录会让打包器
+不再往里走，排在它后面的"放行"规则轮不到，所以放行要写在排除前面。
 
 ## 台词纪律
 
