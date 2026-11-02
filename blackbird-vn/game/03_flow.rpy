@@ -15,6 +15,7 @@ label main_menu_screen:
 default bb_auto = False
 default BB_PREF_SAVED = []
 default BB_AMB_AT_START = None
+default BB_MUS_AT_START = None
 
 init python:
     def bb_trace(msg):
@@ -479,11 +480,12 @@ label epilogue:
         # 存读回归的第二趟：档已经在 start 里读回来了，这里的 have／沉默数是档里的数。
         if os.environ.get("BB_LOAD"):
             $ bb_trace("[LOAD] 读回 证据 " + str(len(have)) + " 沉默 " + str(bb_silence_won))
-            # 环境音也得跟着档回来：这一行没有 [AMB]，说明读档后这一章是静音的。
-            if BB_AMB_AT_START:
-                $ bb_trace("[AMB-LOAD] ok " + BB_AMB_AT_START)
-            else:
-                $ bb_trace("[AMB-LOAD] FAIL 读档后没有认出该放哪一条")
+            # 环境音和音乐床也得跟着档回来：少哪一行，读档后那一路就是静音的。
+            python:
+                for _tag, _f in (("[AMB-LOAD]", BB_AMB_AT_START),
+                                 ("[MUS-LOAD]", BB_MUS_AT_START)):
+                    bb_trace(_tag + (" ok " + _f if _f
+                                     else " FAIL 读档后没有认出该放哪一条"))
             $ renpy.quit()
         # 第一趟：整本跑完的最后一刻真的存一次，供第二趟读回来。
         # 读档要过的 after_load 回调（环境音那条得重置）、档里的五个 Debate 对象，

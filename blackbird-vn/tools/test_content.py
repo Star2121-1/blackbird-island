@@ -649,6 +649,23 @@ for k in noamb:
     info("没有环境音：" + k)
 check("环境音表里没有多余的名（%d 个）"
       % (len(amb) - len(set(amb) & set(BG_REG))), set(amb) <= set(BG_REG))
+# 音乐床和环境音同一条命：查表漏一个名，那一章就只有浪没有琴，谁也不报。
+mus = dict(re.findall(r'"(bg_[a-z0-9_]+)":\s*"(mus_[a-z0-9_]+)"',
+                      amb_src[amb_src.find("BB_MUS_BY_BG"):]))
+nomus = sorted(k for k in BG_REG if k not in mus)
+check("每张背景有音乐床（漏 %d 张：钉它的那一章没有配乐）" % len(nomus), not nomus)
+for k in nomus:
+    info("没有音乐床：" + k)
+check("音乐床表里没有多余的名（%d 个）"
+      % (len(mus) - len(set(mus) & set(BG_REG))), set(mus) <= set(BG_REG))
+# 表里点到的每一条，盘上得真有其文件——查表命中、文件缺失，renpy.music.play 只
+# 会在运行时抛，而自动播放那趟根本不检查声道响没响。
+for _name, _tbl in (("BB_AMB_FILE", amb), ("BB_MUS_FILE", mus)):
+    _files = dict(re.findall(r'"([a-z_0-9]+)":\s*"(audio/[a-z_0-9]+\.wav)"',
+                             amb_src[amb_src.find(_name):]))
+    for _k in set(_tbl.values()):
+        check("%s 点到的那条在盘上：%s" % (_name, _k),
+              _k in _files and os.path.exists(os.path.join(GAME, _files[_k])))
 # 章节卡钉的翻拍：文件名写错，BB_SNAP 判缺图就不钉——卡片少一张照片，谁也不说。
 _all_rpy = "".join(io.open(p, encoding="utf-8").read()
                    for p in glob.glob(os.path.join(GAME, "*.rpy")))

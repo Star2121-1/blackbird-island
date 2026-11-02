@@ -481,10 +481,10 @@ screen preferences():
         # 纸框无条件画，从不读这个开关——勾会动、框不动，是一格假开关，删掉。
 
         text "声　音" style "bb_label"
-        use bb_pref_bar("环境音量", Preference("music volume"))
+        use bb_pref_bar("环境／音乐音量", Preference("music volume"))
         use bb_pref_bar("音效音量", Preference("sound volume"))
         use bb_pref_bar("人声音量", Preference("voice volume"))
-        text "海浪、穿堂风、窗外的雨是合成的循环，压在正文下面；不想听就拉到零。" style "bb_micro" xsize 1000
+        text "浪、风、雨，加上三床走音旧琴，全是程序合成的，压在正文下面。" style "bb_micro" xsize 1000
         text "人声只在对质那五桌上，整桌发言都有声——它不标记哪一句可破；正文不配音。" style "bb_micro" xsize 1000
 
         text "界　面" style "bb_label"
@@ -724,7 +724,7 @@ screen bb_card(chapter, title, sub, day="", snap=None):
     zorder 100
     # 预测期两行都会照跑：这一屏可能被预测到、却根本没走到。
     # 声音那两条自己按卡片去重，落不到头上；日期不行——写脏了导航屏就报一个没去过的日子。
-    $ bb_amb_for(snap)
+    $ bb_place_sound(snap)
     $ bb_page_sound(chapter + title)
     if not renpy.predicting():
         $ store.bb_day = day if day else store.bb_day

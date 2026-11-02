@@ -337,20 +337,26 @@ define BB = Character("黑鸟", who_color=bb_ink, what_color=bb_ink, what_font=b
 # 加这一层的理由不是"热闹"，是正文一直在写声音——
 #   "窗外传来海浪撞击礁石的声音，规律而沉闷，像某种缓慢的心跳。"（第五章）
 #   "大厅里，静得能听见茶凉了、又倒进杯里的声音。"（第四轮）
-# 文字把耳朵叫起来了，画面却是干的。环境音压得很低（峰值 -14dBFS，音乐槽默认
-# 0.5），它要在意识下面走，一抬就变成风光片。
+# 文字把耳朵叫起来了，画面却是干的。床压得很低（环境音 -32～-37dBFS、音乐床
+# -30～-32dBFS，音乐槽默认还要再乘 0.5），它要在意识下面走，一抬就变成风光片。
+# 这三个数是量出来的，不是拍的：build_audio.py 每条都验 RMS 和频谱质心，
+# 质心一旦回到几千赫兹，那就是"沙沙"回来了——2026-11-02 前它一直在沙沙，
+# 因为频谱整形收的是归一化频率、滤波曲线按赫兹写，四条低通全退化成全通。
 #
-# 这两只"响过没有"的记忆必须是 default，不能在 init python 里赋值。
+# 这几只"响过没有"的记忆必须是 default，不能在 init python 里赋值。
 # init 里造出来的对象，Ren'Py 存档时按"还是 init 那个对象"处理，不当内容写进档——
 # 于是 BB_AMB_NOW["file"] 记到哪儿，档里也永远是 None。读档回调拿不到那一首，
 # 环境音就只能等下一章的扉页再钉回来，而章节卡不会重画：读档后这一章是静音的。
 default BB_AMB_NOW = {"file": None}
+default BB_MUS_NOW = {"file": None}
 default BB_PAGE_NOW = {"key": None}
 default BB_VOICE_NOW = {"file": None}
 
 # 素材一条录音都没有，全由 tools/build_audio.py 合成：网上找的"海浪"十有八九
-# 是纪录片片头，一放就把推理压成旅游宣传片。循环做在文件里（频谱法，包络只用
-# 整数个周期），Ren'Py 的 loop 是接着重排队列，文件本身接不上的话一听就知道。
+# 是纪录片片头，一放就把推理压成旅游宣传片；现成的悬疑钢琴 loop 又太"配乐"，
+# 所以音乐床也自己合成。循环做在文件里（频谱法，包络只用整数个周期、拨弦落在
+# 1/4 拍网格上、尾巴圆周绕回、混响圆周卷积），Ren'Py 的 loop 是接着重排队列，
+# 文件本身接不上的话一听就知道。
 init python:
     import os as _os
 
@@ -374,6 +380,21 @@ init python:
         "amb_rain": "audio/amb_rain.wav",
         "amb_room": "audio/amb_room.wav",
     }
+    # 音乐床也按地点分，和环境音同一套查表法：换的是这间屋子的空气，不是曲子。
+    # 三床都是自然小调、走音旧琴、稀疏拨弦，只差调高、速度、密度和混响长度。
+    BB_MUS_BY_BG = {
+        "bg_dock": "mus_sea", "bg_shore": "mus_sea", "bg_manor_ext": "mus_sea",
+        "bg_hall_long": "mus_hall", "bg_hall_ring": "mus_hall",
+        "bg_hall_table": "mus_hall", "bg_study": "mus_hall",
+        "bg_corridor": "mus_room", "bg_east_wing": "mus_room",
+        "bg_east_wing_room": "mus_room", "bg_bedroom_day": "mus_room",
+        "bg_hangzhou": "mus_room", "bg_bridge_night": "mus_room",
+    }
+    BB_MUS_FILE = {
+        "mus_hall": "audio/mus_hall.wav",
+        "mus_sea": "audio/mus_sea.wav",
+        "mus_room": "audio/mus_room.wav",
+    }
 
     renpy.music.register_channel("ambience", "music", True)
 
@@ -394,22 +415,37 @@ init python:
             bb_trace("[AMB] " + f)
         renpy.music.play(f, channel="ambience", fadein=2.0, fadeout=1.2, loop=True)
 
-    def bb_amb_for(snap):
-        """按地点换环境音。同一首不重起——卡片一章一张，重起会听出接缝。"""
+    def bb_mus_play(f):
+        if BB_MUS_NOW["file"] == f:
+            return
+        BB_MUS_NOW["file"] = f
+        if bb_is_auto():
+            bb_trace("[MUS] " + f)
+        # 淡入淡出比环境音长一倍：琴是慢慢换的，不是切台的。
+        renpy.music.play(f, channel="music", fadein=4.0, fadeout=3.0, loop=True)
+
+    def bb_place_sound(snap):
+        """按地点换环境音和音乐床。同一首不重起——卡片一章一张，重起会听出接缝。"""
         if not snap:
             return
-        key = BB_AMB_BY_BG.get(_os.path.splitext(_os.path.basename(snap))[0])
+        base = _os.path.splitext(_os.path.basename(snap))[0]
+        key = BB_AMB_BY_BG.get(base)
         if key:
             bb_amb_play(BB_AMB_FILE[key])
+        key = BB_MUS_BY_BG.get(base)
+        if key:
+            bb_mus_play(BB_MUS_FILE[key])
 
     def bb_amb_after_load():
         """读档时声道是静音的，但记住的那首还在——先清掉再重放，不然这一章没有声音。"""
-        f = BB_AMB_NOW["file"]
-        BB_AMB_NOW["file"] = None
-        if f:
-            # 给存读回归留个凭据：这一趟是"从档里认出来的那一首"，不是后面卡片钉上的。
-            store.BB_AMB_AT_START = f
-            bb_amb_play(f)
+        for now, play, at_start in ((BB_AMB_NOW, bb_amb_play, "BB_AMB_AT_START"),
+                                    (BB_MUS_NOW, bb_mus_play, "BB_MUS_AT_START")):
+            f = now["file"]
+            now["file"] = None
+            if f:
+                # 给存读回归留个凭据：这一趟是"从档里认出来的那一首"，不是后面卡片钉上的。
+                setattr(store, at_start, f)
+                play(f)
 
     config.after_load_callbacks.append(bb_amb_after_load)
 
@@ -422,6 +458,8 @@ init python:
         if renpy.context()._main_menu:
             renpy.music.stop(channel="ambience", fadeout=1.2)
             BB_AMB_NOW["file"] = None
+            renpy.music.stop(channel="music", fadeout=1.2)
+            BB_MUS_NOW["file"] = None
             # 不叫 bb_voice_stop()：那条按 BB_VOICE_NOW 去重，而 full_restart 会先把
             # default 的它抹回 None，于是判断"没在放"、声道照旧响。和环境音一样无条件停。
             renpy.music.stop(channel="voice", fadeout=0.5)
