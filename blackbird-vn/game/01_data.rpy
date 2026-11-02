@@ -282,6 +282,11 @@ init -1 python:
 
         def rebut(self):
             s = self.cur()
+            if self.bullets <= 0:
+                # 机会用尽之后这扇门是关着的，界面上"反　驳"已经按不动；
+                # 这一格是给回滚／自动播放那类不经过界面的路兜底。
+                self.message = "反驳的机会已经用完。这一轮只能往下听。"
+                return
             if not self.selected:
                 self.message = "手里没有举起任何东西。反驳不成立。"
                 return
@@ -310,11 +315,13 @@ init -1 python:
             self.selected = None
             self.message = s.miss or "这句话没有对得上任何东西。"
             if self.bullets <= 0:
-                self.done = True
-                # 三次用尽的这一次，屏幕上不会再有下一格：循环当场退出，判词跟着一起消失。
-                # 所以把"收在这里"和"还剩几句没听过"接在同一条尾巴上，交给结算页去说。
+                # 用尽的是"判错几次"，不是桌上还剩几句话。早先这里一并置 done，
+                # 三次误按就把没读到的正文连同"只在第一次听到时才到手"的证据一起
+                # 锁死——第一夜的死亡时间挂在第三句上，手快的人开局就把自己打死，
+                # 而图鉴永远挂着缺一条。句子还得读完：收轮是玩家按的，代价写在他眼前。
+                self.bullets = 0
                 _left = len(self.statements) - len(self.heard)
-                self.message += ("\n\n机会用尽了，这一轮收在这里。"
+                self.message += ("机会用完，剩下的只能听。"
                                  + ("还有 " + bb_cn(_left) + " 句没有听过。" if _left else ""))
 
         def advance(self):
@@ -361,7 +368,10 @@ init -1 python:
             if self.counters:
                 L.append("主人没有沉默。他把问题推回我手上——那一条不算赢。")
             if self.bullets <= 0:
-                L.append("反驳的机会用完了。剩下的话，留到第二天再问。")
+                L.append("反驳的机会用完了。")
+                # 机会用尽不再收轮，所以"还有没听过的"这件事只有真没听过才说得上。
+                if len(self.statements) - len(self.heard):
+                    L.append("剩下的话，留到第二天再问。")
             L.append("没有人被指认。沉默也不是证据。")
             return L
 

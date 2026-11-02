@@ -139,12 +139,19 @@ check("沈南舟座位标成 countered", d.seat_state("沈南舟") == "countered
 d.advance()
 check("听完一轮回到第一句", d.i == 0 and d.passes == 1)
 
-# 8) 打完机会进结算
+# 8) 打完机会不收轮：判错花掉的是"还能抵几次"，不是桌上还剩几句话
 while d.bullets > 0 and not d.done:
     ev_give("roster")
     d.select("roster")
     d.rebut()
-check("反驳机会用尽即结算", d.done)
+check("机会用尽当场不收轮", d.bullets == 0 and not d.done)
+_i = d.i
+d.advance()
+check("用尽之后句子还在走", d.i != _i)
+d.select("roster")
+d.rebut()
+check("用尽之后反驳不再掉血", d.bullets == 0 and d.message)
+d.end()
 lines = d.result_lines()
 check("结算文案有内容", len(lines) >= 3)
 check("结算不点名", not any("凶手" in l for l in lines))

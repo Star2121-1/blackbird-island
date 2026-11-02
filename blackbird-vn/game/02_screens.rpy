@@ -559,6 +559,7 @@ screen help():
         text "这本书不许你指认谁。你要做的，是看能不能让说话的人停下来。" style "bb_body_sub" xsize 1000
         text "举起一条证据，抵在一句话上。抵对了，那个人会停下来——那一段停顿就是这一局的结果。" style "bb_body_sub" xsize 1000
         text "抵错了用掉一次机会。第一夜三次，往后的每一夜四次——破绽越多，给的余地越大。" style "bb_body_sub" xsize 1000
+        text "机会用完了，桌上剩下的话照旧听得完；只是那几句再抵不动，什么时候收轮由你按。" style "bb_body_sub" xsize 1000
         text "主人不会沉默，他把问题推回你手上，那一条不算赢——但抵中他，会拿到他亲口承认的那一句。" style "bb_body_sub" xsize 1000
 
         text "操　作" style "bb_label"
@@ -1002,12 +1003,15 @@ screen bb_debate(d):
             # "下一句"是循环的，永远点得动；全逼出来之后桌上没有任何地方说"可以收了"。
             # 这一格本来只写举没举证据，收轮的话比它急，占它的位置。
             text "都停下来了" style "bb_micro" color bb_rust
+        elif d.bullets <= 0:
+            # 抵不动了，但桌上还在说话。这一行不说"结束了"——本轮是玩家自己收的。
+            text "机会用完，只能听" style "bb_micro" color bb_pencil
         elif d.selected:
             text "抵上去" style "bb_micro" color bb_gold_dark
         else:
             text "（先举证据，再反驳）" style "bb_micro"
         textbutton "反　驳" action Return(("rebut", None)) style "bb_btn" text_style "bb_btn_text" xfill True:
-            sensitive (d.selected is not None)
+            sensitive (d.selected is not None and d.bullets > 0)
             # 桌上每一步都是 call screen → _return → 重开一屏，焦点每次都被重建。
             # 没有这一行，键盘玩家举完证据要重新走一遍"证据栏→名牌→动作"才摸到反驳；
             # 有了它，回车落在哪儿是确定的：没举证据时它是灰的，不会误触。

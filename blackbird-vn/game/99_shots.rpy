@@ -218,6 +218,18 @@ label shot_all:
     $ _shot("20_debate_done")
     hide screen bb_debate
 
+    # ④ 机会用完、话没说完：这一格要说"只能听"，还要看得见"反　驳"按不动。
+    #    旧规则里三次用尽当场收轮，界面从来没有机会画这个状态——改了规则就得补一张，
+    #    不然"用尽之后还在读正文"只是注释里的一句话。
+    $ round1.bullets = 0
+    $ round1.silence = 1
+    $ round1.message = ""
+    $ round1.selected = "invite"
+    show screen bb_debate(round1)
+    pause 2.4
+    $ _shot("21_debate_spent")
+    hide screen bb_debate
+
     # 每张背景单独钉一张。BB_IMG 缺图不报错，只是悄悄换成纯色占位，
     # 光查盘上有没有 jpg 还不够——得看引擎真把那一层画上了屏。
     # 名单向引擎要：新增一张背景不用改这里。

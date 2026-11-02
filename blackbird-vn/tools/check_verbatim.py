@@ -15,6 +15,12 @@ prose, the prologue (story), the coda (epilogue), the inter-day notes (dayN_pass
 and any line carrying a trailing `# 自撰` marker (supported, currently unused).
 Lines inside those frames are not compared word by word, so FREE_MAX caps how many
 of them can lack a manuscript source — a ceiling, not a rubber stamp.
+
+Third gate, added after the first two were found to leak: quoted speech. A
+`hit=`／`miss=` string is narration and is exempt above — but a Chinese quote pair
+inside it is some named person talking, and neither LINE_RE nor STMT_RE sees it.
+Every such pair must be in the manuscript or echo a line this script already
+verified; short ones are button labels, not speech.
 """
 import ast
 import glob
@@ -191,7 +197,8 @@ def each_line():
 
 
 def each_statement():
-    """hit／miss 是旁白，不查"""
+    """Statement 的正文台词。hit／miss 是旁白，这里不查——
+    但旁白里引号包住的那一段照样查，见 each_quote。"""
     for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
         if os.path.basename(p).startswith('99_'):
             continue
@@ -200,6 +207,54 @@ def each_statement():
             ln = body[:m.start()].count('\n') + 1
             text = m.group(2).replace('\\"', '"')
             yield os.path.basename(p), ln, m.group(1), text
+
+
+# ---------------- 引号里不许长出新台词 ----------------
+# "hit／miss 是旁白，不查" 这句注释只对一半：旁白确实可以自撰，但旁白里一旦有
+# 中文引号，那一段就是某个具体的人说的话——它落在字符串参数里，LINE_RE 和
+# STMT_RE 都吃不到，于是界面给人物代笔，脚本一声不吭。2026-11-03 清点时就是这么
+# 漏着三句（方廷"它进过"、主人"你替我数一遍"、主人"缝在哪一册上的"），README 那句
+# "不增写一句台词"当时是假的。
+# 规则：任何一对中文引号里的话，要么在终稿里，要么是本作已经验过的台词的回声
+# （界面复述人物刚说过的那几个字，比如"他不接“不在场”那三个字"）。
+# 短于三个字的当按钮名放行——帮助页写"再选“反　驳”"不是台词。
+BARE = re.compile(u'[^一-鿿0-9a-zA-Z]')
+CQuote = re.compile(u'“([^“”]*)”')
+STR_RE = re.compile(r'"((?:[^"\\]|\\.)+)"')
+
+
+def bare(s):
+    return BARE.sub('', s)
+
+
+def game_speech():
+    """本作自己已经逐字验过的台词，拿去当回声的语料。"""
+    out = []
+    for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
+        if os.path.basename(p).startswith('99_'):
+            continue
+        body = io.open(p, encoding='utf-8').read()
+        for m in STMT_RE.finditer(body):
+            out.append(m.group(2))
+        for line in body.split('\n'):
+            lm = LINE_RE.match(line)
+            if lm:
+                out.append(lm.group(3))
+    return bare('|'.join(out))
+
+
+def each_quote():
+    """串里套引号的行都交出来；整行注释不算（帮助页的说明文字会引按钮名）。"""
+    for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
+        if os.path.basename(p).startswith('99_'):
+            continue
+        for i, raw in enumerate(io.open(p, encoding='utf-8').read().split('\n'), 1):
+            if raw.strip().startswith('#'):
+                continue
+            for sm in STR_RE.finditer(raw):
+                body = sm.group(1).replace('\\"', '"')
+                for q in CQuote.finditer(body):
+                    yield os.path.basename(p), i, q.group(1)
 
 
 def main():
@@ -257,6 +312,18 @@ def main():
             else:
                 miss.append('%s:%d %s %s' % (fn, ln, who, piece[:48]))
 
+    own_bare = game_speech()
+    qtot = 0
+    invented = []
+    for fn, ln, frag in each_quote():
+        f = bare(frag)
+        if len(f) < 3:
+            continue
+        qtot += 1
+        if verdict(norm(frag), src) == 'OK' or f in own_bare:
+            continue
+        invented.append(u'%s:%d “%s”' % (fn, ln, frag[:48]))
+
     cards = 0
     nocard = []
     for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
@@ -291,9 +358,14 @@ def main():
     print(u'章节卡片 %d 张' % cards)
     for x in nocard:
         print(u'  CARD ' + x)
+    print(u'引号里的话 %d 段（旁白中代人物说的：%d）' % (qtot, len(invented)))
+    for x in invented[:20]:
+        print(u'  VOICE ' + x)
     over = []
     if quoted < 1:
         over.append(u'引号代号的台词一行都没扫到——LINE_RE 的 SPEAK 分支失效了')
+    if qtot < 40:
+        over.append(u'只扫到 %d 段引号里的话——STR_RE／CQuote 没吃到行，回声闸门在空转' % qtot)
     if stricted < 400:
         over.append(u'拆句删只比对了 %d 段——keep_punct／clauses 没吃到行，闸门在空转' % stricted)
     if free > FREE_MAX:
@@ -304,7 +376,7 @@ def main():
                     % (len(nums), NUM_MAX))
     for x in over:
         print(u'  SCOPE ' + x)
-    return 1 if (miss or bang or nocard or cut or over) else 0
+    return 1 if (miss or bang or nocard or cut or over or invented) else 0
 
 
 if __name__ == '__main__':
