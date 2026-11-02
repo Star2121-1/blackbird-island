@@ -9,7 +9,7 @@
 
 # ---------------- 第十七章：大厅 · 第七席 ----------------
 label ch17:
-    call screen bb_card("第十七章", "第七席", "七只满的。那只空的，正对门口。", "十一月二十一日", BB_SNAP("bg_hall_table.jpg"))
+    call screen bb_card("第十七章", "第七席", "七只满的。那只空的，正对门口。", "十一月二十一日", BB_SNAP("bg_hall_table.jpg"), mood="dread")
     scene bg_hall_table
     N "我进大厅，先数了一遍人。"
     N "七个。"
@@ -94,7 +94,7 @@ label ch18:
 
 # ---------------- 第十九章：待一夜 ----------------
 label ch19:
-    call screen bb_card("第十九章", "待一夜", "那只杯子，为什么是今天被收走的。", "十一月二十一日", BB_SNAP("bg_bedroom_day.jpg"))
+    call screen bb_card("第十九章", "待一夜", "那只杯子，为什么是今天被收走的。", "十一月二十一日", BB_SNAP("bg_bedroom_day.jpg"), mood="night")
     scene bg_bedroom_day
     N "我把自己关在房间里，很久。"
     ME "我一直在想，那只杯子，为什么是今天被收走的。"

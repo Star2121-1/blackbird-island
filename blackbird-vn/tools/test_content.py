@@ -666,6 +666,45 @@ for _name, _tbl in (("BB_AMB_FILE", amb), ("BB_MUS_FILE", mus)):
     for _k in set(_tbl.values()):
         check("%s 点到的那条在盘上：%s" % (_name, _k),
               _k in _files and os.path.exists(os.path.join(GAME, _files[_k])))
+# 情绪档：章节卡上写 mood="night"，表里查不到就是静悄悄回落到地点表——那一章
+# 听起来跟别的夜里一模一样，谁也不报。两头都查：卡上不许有表里没有的名，
+# 表里不许有卡上从没用过的名（白合成一床，还骗人说有七档）。
+mood_tbl = dict((k, (a, u)) for k, a, u in re.findall(
+    r'"([a-z]+)":\s*\("(amb_[a-z0-9_]+)",\s*"(mus_[a-z0-9_]+)"\)',
+    amb_src[amb_src.find("BB_MOOD"):amb_src.find("renpy.music.register_channel")]))
+used_mood = set(re.findall(r'(?:mood="|bb_mood\(")([a-z_]+)"',
+                           "".join(io.open(p, encoding="utf-8").read()
+                                   for p in glob.glob(os.path.join(GAME, "*.rpy")))))
+unknown = sorted(used_mood - set(mood_tbl))
+check("卡上和剧本里点的每一档在表里（写错一档：%d 处，它会静悄悄回落到地点表）"
+      % len(unknown), not unknown)
+for k in unknown:
+    info("表里没有这一档：" + k)
+dead = sorted(set(mood_tbl) - used_mood)
+check("表里每一档都有卡在用（没人用的：%d 档）" % len(dead), not dead)
+for k in dead:
+    info("没有章节卡用这一档：" + k)
+amb_files = dict(re.findall(r'"(amb_[a-z0-9_]+)":\s*"(audio/[a-z0-9_]+\.wav)"', amb_src))
+mus_files = dict(re.findall(r'"(mus_[a-z0-9_]+)":\s*"(audio/[a-z0-9_]+\.wav)"', amb_src))
+for _m, (_a, _u) in sorted(mood_tbl.items()):
+    check("情绪档 %s 点到的环境音在盘上：%s" % (_m, _a),
+          _a in amb_files and os.path.exists(os.path.join(GAME, amb_files[_a])))
+    check("情绪档 %s 点到的音乐床在盘上：%s" % (_m, _u),
+          _u in mus_files and os.path.exists(os.path.join(GAME, mus_files[_u])))
+# 盘上躺着、但没有任何表指向的循环：白占发行包（一条两三兆），而且它多半是
+# 改名改了一半——表里换了名、旧文件还留在原地。
+_pointed = (set(amb.values()) | set(mus.values())
+            | {a for a, _ in mood_tbl.values()} | {u for _, u in mood_tbl.values()})
+_on_disk = {os.path.splitext(f)[0] for f in os.listdir(os.path.join(GAME, "audio"))
+            if f.startswith(("amb_", "mus_")) and f.endswith(".wav")}
+_unused = sorted(_on_disk - _pointed)
+check("盘上每一条循环都有表指向它（没人用的 %d 条）" % len(_unused), not _unused)
+for k in _unused:
+    info("没有表指向这条 wav：" + k)
+_missing = sorted(_pointed - _on_disk)
+check("表里点到的每一条都在盘上（缺 %d 条）" % len(_missing), not _missing)
+for k in _missing:
+    info("表里点了但盘上没有：" + k)
 # 章节卡钉的翻拍：文件名写错，BB_SNAP 判缺图就不钉——卡片少一张照片，谁也不说。
 _all_rpy = "".join(io.open(p, encoding="utf-8").read()
                    for p in glob.glob(os.path.join(GAME, "*.rpy")))

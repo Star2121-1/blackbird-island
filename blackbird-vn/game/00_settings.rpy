@@ -361,7 +361,7 @@ init python:
     import os as _os
 
     # 章节卡钉的那张翻拍就是这一章的地点，环境音直接由它取——
-    # 28 张卡各写一个参数，不如在这里查一次表。
+    # 32 张卡各写一个参数，不如在这里查一次表。
     BB_AMB_BY_BG = {
         "bg_dock": "amb_sea", "bg_shore": "amb_sea",
         "bg_manor_ext": "amb_sea",
@@ -379,9 +379,11 @@ init python:
         "amb_wind": "audio/amb_wind.wav",
         "amb_rain": "audio/amb_rain.wav",
         "amb_room": "audio/amb_room.wav",
+        "amb_night": "audio/amb_night.wav",
+        "amb_dust": "audio/amb_dust.wav",
     }
     # 音乐床也按地点分，和环境音同一套查表法：换的是这间屋子的空气，不是曲子。
-    # 三床都是自然小调、走音旧琴、稀疏拨弦，只差调高、速度、密度和混响长度。
+    # 七床都是自然小调、走音旧琴、稀疏拨弦，只差调高、速度、密度和混响长度。
     BB_MUS_BY_BG = {
         "bg_dock": "mus_sea", "bg_shore": "mus_sea", "bg_manor_ext": "mus_sea",
         "bg_hall_long": "mus_hall", "bg_hall_ring": "mus_hall",
@@ -394,6 +396,24 @@ init python:
         "mus_hall": "audio/mus_hall.wav",
         "mus_sea": "audio/mus_sea.wav",
         "mus_room": "audio/mus_room.wav",
+        "mus_night": "audio/mus_night.wav",
+        "mus_dread": "audio/mus_dread.wav",
+        "mus_dust": "audio/mus_dust.wav",
+        "mus_end": "audio/mus_end.wav",
+    }
+    # 上面两张表按**地点**查。但同一面大厅墙，第六章坐着对质、第八章那句"东翼不是
+    # 档案室"和过夜那一段不是一床（`03_flow.rpy:285`／`06_day2.rpy:87`／`12_days.rpy:10`
+    # 三张卡钉的是同一张 `bg_hall_ring`）——所以章节卡还可以直接点一档情绪（`mood`），
+    # 点了就两路都按这一档走，没点的那一路仍回落到地点表。
+    #   night 过夜那四张与夜里两章：音区最低、拨弦最稀、混响最长
+    #   dread 东翼与真相逼近：多一地差半音的持续音，空气不干净
+    #   dust  二〇二五年那一头，杭州翻手稿：屋子是干的，混响最短
+    #   end   终章：只剩高音区几个孤立的音，尾巴留满
+    BB_MOOD = {
+        "night": ("amb_night", "mus_night"),
+        "dread": ("amb_dust", "mus_dread"),
+        "dust": ("amb_room", "mus_dust"),
+        "end": ("amb_night", "mus_end"),
     }
 
     renpy.music.register_channel("ambience", "music", True)
@@ -424,17 +444,35 @@ init python:
         # 淡入淡出比环境音长一倍：琴是慢慢换的，不是切台的。
         renpy.music.play(f, channel="music", fadein=4.0, fadeout=3.0, loop=True)
 
-    def bb_place_sound(snap):
-        """按地点换环境音和音乐床。同一首不重起——卡片一章一张，重起会听出接缝。"""
+    def bb_place_sound(snap, mood=None):
+        """按地点换环境音和音乐床；卡片点了情绪档就两路都跟着那档走。
+        同一首不重起——卡片一章一张，重起会听出接缝。"""
         if not snap:
             return
         base = _os.path.splitext(_os.path.basename(snap))[0]
-        key = BB_AMB_BY_BG.get(base)
-        if key:
-            bb_amb_play(BB_AMB_FILE[key])
-        key = BB_MUS_BY_BG.get(base)
-        if key:
-            bb_mus_play(BB_MUS_FILE[key])
+        amb = mus = None
+        pair = BB_MOOD.get(mood) if mood else None
+        if pair:
+            amb, mus = pair
+        if amb is None:
+            amb = BB_AMB_BY_BG.get(base)
+        if amb:
+            bb_amb_play(BB_AMB_FILE[amb])
+        if mus is None:
+            mus = BB_MUS_BY_BG.get(base)
+        if mus:
+            bb_mus_play(BB_MUS_FILE[mus])
+
+    def bb_mood(name):
+        """剧本里直接换一档情绪，不经过卡片。
+        只用在**整段回到二〇二五年**的那些入口（`12_days.rpy` 的五张过夜卡之后）：
+        卡片定的是"接下来这一整段"的底色，而过夜卡之后紧跟的是杭州的笔记——夜里的海
+        不该一直响到阅览室。夹在岛上章节里的一两行回忆不换，换了就是抽气。
+        和卡片同一个规矩：认不出这一档就什么都不做，拼错由 `test_content.py` 查。"""
+        pair = BB_MOOD.get(name)
+        if pair:
+            bb_amb_play(BB_AMB_FILE[pair[0]])
+            bb_mus_play(BB_MUS_FILE[pair[1]])
 
     def bb_amb_after_load():
         """读档时声道是静音的，但记住的那首还在——先清掉再重放，不然这一章没有声音。"""

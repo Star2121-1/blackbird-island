@@ -8,7 +8,7 @@
 
 # ---------------- 第十四章：名单 ----------------
 label ch14:
-    call screen bb_card("第十四章", "名单", "第八个名字，被墨擦掉了。", "十一月二十日", BB_SNAP("bg_hall_table.jpg"))
+    call screen bb_card("第十四章", "名单", "第八个名字，被墨擦掉了。", "十一月二十日", BB_SNAP("bg_hall_table.jpg"), mood="dread")
     scene bg_hall_table
     N "雾退了一整夜。"
     N "十一月二十日，清晨。大厅里，那张脸还搁在桌上，正对那只空杯。没有人动它。"

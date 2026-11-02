@@ -121,7 +121,7 @@ label ch4:
 
 # ---------------- 第五章：夜话（书房 · 赵寒与苏蔓 · 顾言笙笔记其二） ----------------
 label ch5:
-    call screen bb_card("第五章", "夜话", "窗外传来海浪撞击礁石的声音。", "十一月十七日", BB_SNAP("bg_study.jpg"))
+    call screen bb_card("第五章", "夜话", "窗外传来海浪撞击礁石的声音。", "十一月十七日", BB_SNAP("bg_study.jpg"), mood="night")
     scene bg_study
     show spr_su as talker at bb_talk_r
     N "窗外传来海浪撞击礁石的声音，规律而沉闷，像某种缓慢的心跳。"

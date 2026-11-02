@@ -84,7 +84,7 @@ label ch7:
 
 # ---------------- 第八章：东翼 ----------------
 label ch8:
-    call screen bb_card("第八章", "东翼", "东翼不是档案室，是我待的地方。", "十一月十八日", BB_SNAP("bg_hall_ring.jpg"))
+    call screen bb_card("第八章", "东翼", "东翼不是档案室，是我待的地方。", "十一月十八日", BB_SNAP("bg_hall_ring.jpg"), mood="dread")
     scene bg_hall_ring
     N "天亮的时候，赵寒回来了。"
     N "他站在大厅正中，没有坐下。一只手垂在身侧，指缝里夹着一小截被撕下来的纸角。"
@@ -168,7 +168,7 @@ label ch8:
 
 # ---------------- 第九章：摆好的尸体 ----------------
 label ch9:
-    call screen bb_card("第九章", "摆好的尸体", "八只杯，一只空着，自始至终没人碰。", "十一月十八日", BB_SNAP("bg_hall_table.jpg"))
+    call screen bb_card("第九章", "摆好的尸体", "八只杯，一只空着，自始至终没人碰。", "十一月十八日", BB_SNAP("bg_hall_table.jpg"), mood="dread")
     scene bg_hall_table
     N "我进大厅的时候，刚过九点。环形沙发撤掉了，换成一张八仙桌。"
     N "桌上摆着八只杯。名单上，八个名字，一人一只。"

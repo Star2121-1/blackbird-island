@@ -76,7 +76,7 @@ label story:
     GU "它是什么时候没有的，我不知道。也许从来就没有写。"
     GU "读之前，我把规矩说清楚——"
     GU "这本书不许你指认谁。你要做的，是看能不能让说话的人停下来。"
-    call screen bb_card("序章", "翻开", "二〇二五年 · 杭州 · 顾言笙的调查笔记", "二〇二五年十一月", BB_SNAP("bg_hangzhou.jpg"))
+    call screen bb_card("序章", "翻开", "二〇二五年 · 杭州 · 顾言笙的调查笔记", "二〇二五年十一月", BB_SNAP("bg_hangzhou.jpg"), mood="dust")
     jump ch1
 
 

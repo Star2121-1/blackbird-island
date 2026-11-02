@@ -107,7 +107,7 @@ label ch22:
 
 # ---------------- 第二十三章：那张脸，正对门口 ----------------
 label ch23:
-    call screen bb_card("第二十三章", "那张脸，正对门口", "他仍旧没有把名字给出来。", "十一月二十二日", BB_SNAP("bg_hall_table.jpg"))
+    call screen bb_card("第二十三章", "那张脸，正对门口", "他仍旧没有把名字给出来。", "十一月二十二日", BB_SNAP("bg_hall_table.jpg"), mood="dread")
     scene bg_hall_table
     N "日头移过了窗，又移过了桌。"
     N "大厅里，人一个一个退开，让出那张八仙桌。"
@@ -150,7 +150,7 @@ label ch23:
 
 # ---------------- 第二十四章：证词（终章） ----------------
 label ch24:
-    call screen bb_card("第二十四章", "证词（终章）", "筛子到我手里了。", "十一月二十二日", BB_SNAP("bg_shore.jpg"))
+    call screen bb_card("第二十四章", "证词（终章）", "筛子到我手里了。", "十一月二十二日", BB_SNAP("bg_shore.jpg"), mood="end")
     scene bg_hall_table
     N "夜，落进大厅。雾没有散。"
     N "沈南舟的那只信封，没有留在大厅里。"

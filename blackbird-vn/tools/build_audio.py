@@ -200,6 +200,29 @@ def room(sr=SR_LOOP, secs=26.0):
     return add_bursts(y, sr, 0.35, 0.10, (260, 900), 0.05), secs
 
 
+def night(sr=SR_LOOP, secs=28.0):
+    """夜里的海：同一片水，隔着一层窗。比 amb_sea 低一档、慢一档——
+    白天那条的泡沫（涌的三次方）在夜里几乎没有了，剩下远处那阵风。"""
+    n = int(sr * secs)
+    bed = colored_loop(n, sr, lowpass_shape(240, 2.5))
+    far = colored_loop(n, sr, bandpass_shape(120, 520, 1.8))
+    surge = swell(n, sr, [(1, 1.0), (2, 0.4), (4, 0.18)], 0.6, base=1.0)
+    return bed * surge[:, None] * 0.8 + (far * (surge[:, None] ** 2)) * 0.25, secs
+
+
+def dust(sr=SR_LOOP, secs=30.0):
+    """封存的房间：东翼那一间，没人住、空气是停的。
+    比 amb_room 更低更干——木头偶尔响一声，远处隔很久滴一滴。"""
+    n = int(sr * secs)
+    bed = colored_loop(n, sr, lowpass_shape(140, 3.0))
+    air = colored_loop(n, sr, bandpass_shape(240, 900, 1.6))
+    e = swell(n, sr, [(1, 1.0), (3, 0.25)], 0.06, base=1.0)
+    y = bed * e[:, None] * 0.55 + air * 0.035
+    y = add_bursts(y, sr, 0.16, 0.16, (180, 620), 0.05)
+    y = add_bursts(y, sr, 0.05, 0.05, (1200, 2200), 0.02)
+    return y, secs
+
+
 # ---------------- 三条音乐床 ----------------
 # 为什么不找现成的曲子：要的是"有人在很远的地方弹，隔了一堵墙"——网上那种
 # 悬疑片钢琴 loop 一进来就把推理变成广告。自己合成能把音高、密度和混响长度
@@ -266,7 +289,7 @@ def circular_reverb(x, sr, tail_s, decay_s, mix, cut_hz=2200.0):
 
 def music_bed(root, chords, bar=8.0, density=1.6, bright=0.9,
               pad_level=0.34, note_level=0.5, tail_s=2.6, decay_s=1.1,
-              mix=0.42, pad_over=2.0, sr=SR_MUS):
+              mix=0.42, pad_over=2.0, clash=None, sr=SR_MUS):
     """一床：每小节一地持续和声，上面按 1/4 拍网格撒稀疏的拨弦，左右声道各撒一遍。
 
     root 是根音赫兹，chords 是 (相对半音, 和弦内音) 的序列——自然小调，
@@ -290,6 +313,13 @@ def music_bed(root, chords, bar=8.0, density=1.6, bright=0.9,
         pad = pad_sig(fs, bar * pad_over, sr, pad_level / (pad_over ** 0.5))
         place(L, pad, int(i * bar * sr))
         place(R, pad, int(i * bar * sr))
+        if clash is not None:
+            # 再压一地、差 clash 个半音：两股差半音的持续音叠在一起，拍音慢到
+            # 听不出是两个人在弹，只觉得这间屋子的空气不干净。东翼那一床用。
+            off = pad_sig([f * 2.0 ** (clash / 12.0) for f in fs],
+                          bar * pad_over, sr, pad_level / (pad_over ** 0.5) * 0.7)
+            place(L, off, int(i * bar * sr))
+            place(R, off, int((i + 0.5) * bar * sr))
     step = 0.25
     for chan in (L, R):
         pos = 0.0
@@ -304,7 +334,8 @@ def music_bed(root, chords, bar=8.0, density=1.6, bright=0.9,
     return y, loop_s
 
 
-# 三床的差别只有调、速度、密度和屋子大小——同一件乐器，换的是地点的空气。
+# 七床的差别只有调、速度、密度、屋子大小和（东翼那一床）一地不谐和的持续音——
+# 同一件乐器，换的是这一程走到哪儿了。
 def mus_hall():
     """大厅与书房：人都在一张桌子边上，琴也走音得最明显。"""
     return music_bed(110.0, [(0, (0, 3, 7)), (-4, (0, 4, 7)),
@@ -321,11 +352,53 @@ def mus_sea():
 
 
 def mus_room():
-    """走廊、东翼、客房、杭州阅览室：最小的屋子，最低的一档。"""
+    """走廊、客房：最小的屋子。根音比大厅抬高二半音（123.5 对 110）——墙离人近，
+    屋子小，琴反而往上走，不是往下。"""
     return music_bed(123.5, [(0, (0, 3, 7)), (-3, (0, 4, 7)),
                              (4, (0, 3, 7)), (-5, (0, 4, 7))],
                      bar=7.0, density=1.3, bright=0.8,
                      pad_level=0.30, tail_s=3.2, decay_s=1.4, mix=0.5)
+
+
+# 另外四床按"这一程走到哪儿了"分，不按地点：同一面大厅墙，第六章坐着对质和第一夜
+# 那张过夜卡不是一床。挂在哪张卡上由剧本的 mood 参数说，整段回到二〇二五年时由
+# 剧本直接 $ bb_mood("dust")。
+
+def mus_night():
+    """过夜：一整个夜里没有人说话。音区压到最低、拨弦最稀、混响最长。"""
+    return music_bed(87.3, [(0, (0, 3, 7)), (-5, (0, 3, 7)),
+                            (3, (0, 4, 7)), (-2, (0, 3, 7))],
+                     bar=11.0, density=0.7, bright=0.65,
+                     pad_level=0.26, tail_s=4.2, decay_s=1.9, mix=0.52)
+
+
+def mus_dread():
+    """东翼、真相逼近那一档：多压一地差一个半音的持续音，拍音很慢。
+    还是不敲打击乐——一敲就成了恐怖片配乐，这本子的怕来自"有人在说真话"。"""
+    return music_bed(103.8, [(0, (0, 3, 7)), (1, (0, 3, 7)),
+                             (-4, (0, 4, 7)), (6, (0, 3, 7))],
+                     bar=10.0, density=0.6, bright=0.75,
+                     pad_level=0.27, tail_s=3.6, decay_s=1.6, mix=0.5,
+                     clash=1.0)
+
+
+def mus_dust():
+    """二〇二五年那一头：杭州阅览室翻手稿。屋子是干的——混响最短，
+    拨弦密一点、亮一点，近得像贴在纸面上。"""
+    return music_bed(146.8, [(0, (0, 3, 7)), (2, (0, 4, 7)),
+                             (-3, (0, 3, 7)), (5, (0, 4, 7))],
+                     bar=6.0, density=2.0, bright=1.05,
+                     pad_level=0.26, tail_s=1.0, decay_s=0.5, mix=0.28)
+
+
+def mus_end():
+    """终章（第二十四章那张卡）：只剩高音区几个孤立的音，尾巴留满。
+    不给结论——这本子的结局问题在这份手稿里同样没有答案。"""
+    return music_bed(196.0, [(0, (0, 3, 7)), (7, (0, 3, 7)),
+                             (3, (0, 4, 7)), (7, (0, 3, 7))],
+                     bar=12.0, density=0.45, bright=0.6,
+                     pad_level=0.22, note_level=0.42,
+                     tail_s=4.8, decay_s=2.4, mix=0.56)
 
 
 # ---------------- 四个音效 ----------------
@@ -379,8 +452,11 @@ def sfx_silence(sr=SR_SFX, secs=0.7):
     return finalize(np.stack([y, y * 0.98], axis=1), -9)
 
 
-LOOPS = {"amb_sea": sea, "amb_wind": wind, "amb_rain": rain, "amb_room": room}
-MUS = {"mus_hall": mus_hall, "mus_sea": mus_sea, "mus_room": mus_room}
+LOOPS = {"amb_sea": sea, "amb_wind": wind, "amb_rain": rain, "amb_room": room,
+         "amb_night": night, "amb_dust": dust}
+MUS = {"mus_hall": mus_hall, "mus_sea": mus_sea, "mus_room": mus_room,
+       "mus_night": mus_night, "mus_dread": mus_dread,
+       "mus_dust": mus_dust, "mus_end": mus_end}
 SFX = {"sfx_page": sfx_page, "sfx_pick": sfx_pick,
        "sfx_stamp": sfx_stamp, "sfx_silence": sfx_silence}
 
@@ -388,18 +464,23 @@ SFX = {"sfx_page": sfx_page, "sfx_pick": sfx_pick,
 # 大致在 -18dBFS，音乐槽默认还压到 0.5（-6dB），所以 -30 上下的床翻出来是
 # 比人声低三十档，听得到、压不住话。room 最轻——静场那一章要的就是"静得
 # 能听见茶凉了"；sea 最响，因为正文里那句"海浪撞击礁石"是明写在纸上的。
-AMB_RMS_DB = {"amb_sea": -32.0, "amb_wind": -33.0, "amb_rain": -34.0, "amb_room": -37.0}
-MUS_RMS_DB = {"mus_hall": -30.0, "mus_sea": -32.0, "mus_room": -32.0}
+AMB_RMS_DB = {"amb_sea": -32.0, "amb_wind": -33.0, "amb_rain": -34.0,
+              "amb_room": -37.0, "amb_night": -33.0, "amb_dust": -36.0}
+MUS_RMS_DB = {"mus_hall": -30.0, "mus_sea": -32.0, "mus_room": -32.0,
+              "mus_night": -32.0, "mus_dread": -31.0, "mus_dust": -32.0,
+              "mus_end": -31.0}
 
 _trap = getattr(np, "trapezoid", None) or np.trapz
 
-# 质心上限。七条的上限留在各自实测值的 1.5–2.5 倍——够松，改一改泡沫的多少
+# 质心上限。十三条的上限留在各自实测值的 1.4–2.5 倍——够松，改一改泡沫的多少
 # 不至于天天红；够紧，单位一退化就撞线：白噪声在 22k 采样下质心 5.5k，比最松的
-# rain（2600）还高 2.1 倍，比 room（300）高 18 倍。
+# rain（2600）还高 2.1 倍，比最紧的 dust（180）高 31 倍。
 # 它防的是"退化成白噪声"这一档，防不住"只是偏亮了一点"——那一档归耳朵。
 CEN_MAX = {"amb_sea": 1400.0, "amb_wind": 800.0, "amb_rain": 2600.0,
-           "amb_room": 300.0, "mus_hall": 1200.0, "mus_sea": 1200.0,
-           "mus_room": 1200.0}
+           "amb_room": 300.0, "amb_night": 400.0, "amb_dust": 180.0,
+           "mus_hall": 1200.0, "mus_sea": 1200.0,
+           "mus_room": 1200.0, "mus_night": 1000.0, "mus_dread": 1100.0,
+           "mus_dust": 1600.0, "mus_end": 1500.0}
 
 
 def analyze(x, sr):
@@ -422,9 +503,9 @@ def check_bed(name, x, sr, target_db):
     """一床循环合格不合格：不能太响、不能太轻、更不能是白噪声。
 
     这里**没有**接缝闸门，是量过之后撤的，不是没顾上。两种候选都试过：
-      · 跨接缝那一步的斜率 / 其余部分 99.9 分位——七床实测 0.14–1.08，而故意
+      · 跨接缝那一步的斜率 / 其余部分 99.9 分位——十三床实测 0.02–0.41，而故意
         做的"后半整体降 3dB"（循环点一个台阶）只有 0.12，"中间抠六个样本"0.11。
-        噪声本来就逐点乱跳，台阶藏在分布里，量不出来。
+        做坏的那两条比最干净的好床还低：噪声本来就逐点乱跳，台阶藏在分布里，量不出来。
       · 首尾窗口的功率差 / 全条平均——窗口取 1s/2s/4s/6s 都试过：amb_sea 自己
         就有 2.32（慢涌的三次方让泡沫成团，那是浪，不是缝），故意做坏的那条才
         1.46。分不开好坏的数不能当闸，只会给人假安全感。
