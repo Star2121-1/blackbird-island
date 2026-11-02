@@ -102,6 +102,7 @@ init -1 python:
     def ev_give(eid):
         if eid not in have:
             have.add(eid)
+            bb_sfx("pick")
             renpy.notify("获得证据：" + EVIDENCE[eid].name)
 
     def ev_list():
@@ -230,6 +231,9 @@ init -1 python:
                 return
             if s.weak_to and self.selected == s.weak_to and self.i not in self.broken:
                 self.broken[self.i] = s.hit_kind
+                # 抵中了要响，而且两种抵法两种响法：沉默是压下去的一声闷，
+                # 反问是章子落在纸上的一记。屏幕上的角章是看不见的动作，得有个声音对上。
+                bb_sfx("silence" if s.hit_kind == "silence" else "stamp")
                 if s.hit_kind == "silence":
                     self.silence += 1
                 elif s.hit_kind == "counter":

@@ -18,9 +18,15 @@ body = "\n".join(l[4:] if l.startswith("    ") else l
 fake = types.ModuleType("renpy")
 fake.notify = lambda *a, **k: None
 fake.store = None
+# 数据层里那几个发声的调用（获得证据、抵中一句）在这里必须是哑的：
+# 静态自检没有音频设备，也不该因为"响了"而失败。
+fake.sound = types.SimpleNamespace(play=lambda *a, **k: None)
+fake.music = types.SimpleNamespace(play=lambda *a, **k: None,
+                                   get_playing=lambda *a, **k: None,
+                                   register_channel=lambda *a, **k: None)
 sys.modules.setdefault("renpy", fake)
 
-g = {"renpy": fake}
+g = {"renpy": fake, "bb_sfx": lambda *a, **k: None}
 exec(compile(body, DATA, "exec"), g)
 
 fails = []

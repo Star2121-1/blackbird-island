@@ -67,8 +67,13 @@ def load_init(fname, g):
 fake = types.ModuleType("renpy")
 fake.notify = lambda *a, **k: None
 fake.store = None
+# 同 test_logic：数据层会调用 bb_sfx／renpy.sound，静态自检里没有声音可放。
+fake.sound = types.SimpleNamespace(play=lambda *a, **k: None)
+fake.music = types.SimpleNamespace(play=lambda *a, **k: None,
+                                   get_playing=lambda *a, **k: None,
+                                   register_channel=lambda *a, **k: None)
 sys.modules.setdefault("renpy", fake)
-g = {"renpy": fake}
+g = {"renpy": fake, "bb_sfx": lambda *a, **k: None}
 for f in ("01_data.rpy", "13_rounds_ab.rpy", "14_rounds_cd.rpy"):
     load_init(f, g)
 

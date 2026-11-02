@@ -15,8 +15,8 @@ init -1 python:
 
     config.screen_width = 1920
     config.screen_height = 1080
-    config.has_sound = False
-    config.has_music = False
+    config.has_sound = True
+    config.has_music = True
     config.has_voice = False
     config.allow_skipping = True
     config.enter_transition = dissolve
@@ -27,6 +27,10 @@ init -1 python:
     preferences.text_cps = 32
     preferences.afm_time = 15
     config.default_afm_enable = True
+    # 环境音是压在意识下面的那条线，默认给得低；音效比它响一档，不然盖不过海浪。
+    # 变量名跟着混音器走：音效那条 mixer 叫 sfx，不叫 sound。
+    config.default_music_volume = 0.5
+    config.default_sfx_volume = 0.8
     config.thumbnail_width = 232
     config.thumbnail_height = 122
     # 窗口图标：一枚压在纸上的静默章，由 tools/build_icon.py 从现成素材拼出来，
@@ -273,3 +277,83 @@ define WANG = Character("王剑", who_color=bb_ink, what_color=bb_ink, what_font
 define ME = Character("陈默", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
 define GU = Character("顾言笙", who_color=bb_pencil, what_color=bb_ink, what_font=bb_serif)
 define BB = Character("黑鸟", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+
+
+# ---------- 声音 ----------
+# 这本子本来没有声音：config.has_sound 一直关着，设置里也不会有音量条。
+# 加这一层的理由不是"热闹"，是正文一直在写声音——
+#   "窗外传来海浪撞击礁石的声音，规律而沉闷，像某种缓慢的心跳。"（第五章）
+#   "大厅里，静得能听见茶凉了、又倒进杯里的声音。"（第四轮）
+# 文字把耳朵叫起来了，画面却是干的。环境音压得很低（峰值 -14dBFS，音乐槽默认
+# 0.5），它要在意识下面走，一抬就变成风光片。
+#
+# 素材一条录音都没有，全由 tools/build_audio.py 合成：网上找的"海浪"十有八九
+# 是纪录片片头，一放就把推理压成旅游宣传片。循环做在文件里（频谱法，包络只用
+# 整数个周期），Ren'Py 的 loop 是接着重排队列，文件本身接不上的话一听就知道。
+init python:
+    import os as _os
+
+    # 章节卡钉的那张翻拍就是这一章的地点，环境音直接由它取——
+    # 28 张卡各写一个参数，不如在这里查一次表。
+    BB_AMB_BY_BG = {
+        "bg_dock": "amb_sea", "bg_shore": "amb_sea",
+        "bg_corridor": "amb_wind",
+        "bg_east_wing": "amb_rain",
+        "bg_hall_long": "amb_room", "bg_hall_ring": "amb_room",
+        "bg_dining": "amb_room", "bg_study": "amb_room",
+        "bg_hangzhou": "amb_room",
+    }
+    BB_AMB_FILE = {
+        "amb_sea": "audio/amb_sea.wav",
+        "amb_wind": "audio/amb_wind.wav",
+        "amb_rain": "audio/amb_rain.wav",
+        "amb_room": "audio/amb_room.wav",
+    }
+
+    renpy.music.register_channel("ambience", "music", True)
+
+    # 当前那一首要自己记着，别问引擎：renpy.music.get_playing() 在淡入还没起播、
+    # 或者自动播放那样一秒翻三张卡的时候会说"没在放"，于是同一首被反复排进队列，
+    # 听着就是一阵抽气。实测第一日连播了 12 次同一条 room。
+    BB_AMB_NOW = {"file": None}
+
+    def bb_amb_play(f):
+        if BB_AMB_NOW["file"] == f:
+            return
+        BB_AMB_NOW["file"] = f
+        # 自动播放的冒烟测试要能看见这条线走没走：图上看不出海浪。
+        if store.bb_auto:
+            bb_trace("[AMB] " + f)
+        renpy.music.play(f, channel="ambience", fadein=2.0, fadeout=1.2, loop=True)
+
+    def bb_amb_for(snap):
+        """按地点换环境音。同一首不重起——卡片一章一张，重起会听出接缝。"""
+        if not snap:
+            return
+        key = BB_AMB_BY_BG.get(_os.path.splitext(_os.path.basename(snap))[0])
+        if key:
+            bb_amb_play(BB_AMB_FILE[key])
+
+    def bb_amb_after_load():
+        """读档时声道是静音的，但记住的那首还在——先清掉再重放，不然这一章没有声音。"""
+        f = BB_AMB_NOW["file"]
+        BB_AMB_NOW["file"] = None
+        if f:
+            bb_amb_play(f)
+
+    config.after_load_callbacks.append(bb_amb_after_load)
+
+    def bb_sfx(name):
+        renpy.sound.play("audio/sfx_" + name + ".wav", channel="sound")
+
+    # 翻页声。屏体里的 $ 在重绘时会再执行一次（预测也算一次），所以按卡片去重：
+    # 同一张扉页只响一次，换下一章再响。环境音那条踩过同样的坑，见 BB_AMB_NOW。
+    BB_PAGE_NOW = {"key": None}
+
+    def bb_page_sound(key):
+        if BB_PAGE_NOW["key"] == key:
+            return
+        BB_PAGE_NOW["key"] = key
+        if store.bb_auto:
+            bb_trace("[PAGE] " + key)
+        bb_sfx("page")

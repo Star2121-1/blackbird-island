@@ -440,6 +440,11 @@ screen preferences():
         use bb_pref_toggle("过渡动画", Preference("transitions", "toggle"))
         use bb_pref_toggle("空行显示", Preference("show empty window", "toggle"))
 
+        text "声　音" style "bb_label"
+        use bb_pref_bar("环境音量", Preference("music volume"))
+        use bb_pref_bar("音效音量", Preference("sound volume"))
+        text "海浪、穿堂风、窗外的雨是合成的循环，压在正文下面；不想听就拉到零。" style "bb_micro" xsize 1000
+
         text "界　面" style "bb_label"
         use bb_pref_toggle("快捷菜单", BBToggle("quick_menu"))
         use bb_pref_toggle("系统光标", Preference("system cursor", "toggle"))
@@ -658,6 +663,8 @@ screen skip_indicator():
 screen bb_card(chapter, title, sub, day="", snap=None):
     zorder 100
     $ store.bb_day = day if day else store.bb_day
+    $ bb_amb_for(snap)
+    $ bb_page_sound(chapter + title)
     if store.bb_auto:
         # 扉页是天然的进度标记：卡在这里，就是这一章的界面没被自动收掉。
         $ bb_trace("[AUTO] " + chapter + "·" + title)

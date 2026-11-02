@@ -51,6 +51,36 @@
 悬停反馈一律走形状（下划线／位移），不走颜色。状态另有非颜色的冗余编码
 （涂黑条、虚线框、回形针、装订孔），图例见游戏内"怎么读这份卷宗"。
 
+## 声音：压在字下面的一条
+
+正文一直在写声音——"窗外传来海浪撞击礁石的声音，规律而沉闷，像某种缓慢的心跳"、
+"大厅里，静得能听见茶凉了、又倒进杯里的声音"。文字把耳朵叫起来了，画面是干的，
+所以要有一条环境音。但它不能抢：整本是读的，不是看的。
+
+- 环境音按地点换，地点直接由章节卡钉的那张翻拍取（`BB_AMB_BY_BG`），不在每张卡上
+  重复写参数。海浪／穿堂风／雨／室内四条。
+- **素材一条录音都没有**，全由 `tools/build_audio.py` 合成。网上找的"海浪"十有八九是
+  纪录片片头，一放就把推理压成旅游宣传片。
+- 峰值压到 -14dBFS，音乐槽默认 0.5。它在意识下面走，一抬就变成风光片。
+- 音效只给"看不见的动作"配音：翻到下一章一记，拿起证据一记，逼出沉默一记闷，
+  反问落下一记章。两种抵法两种响法，角章是画面上的哑动作，得有个声音对上。
+
+三条引擎上的坑，都是实测出来的：
+
+- 音量变量跟着混音器走。音效那条 mixer 叫 `sfx`，所以是
+  `config.default_sfx_volume`；写成 `default_sound_volume` 会在 lint 阶段直接抛
+  "not a known configuration variable"，并把整个跑挂。
+- 判断"这一首已经在放"不能问引擎。`renpy.music.get_playing()` 在淡入还没起播、
+  或自动播放一秒翻三张卡的时候会说"没在放"，于是同一条 ambience 被反复排进队列，
+  听着是一阵抽气（实测第一日连排 12 次）。现在自己记 `BB_AMB_NOW`，
+  并在 `config.after_load_callbacks` 里重置——读档后通道是空的，但记忆不是。
+- **屏体里的 `$` 会被重跑**（预测、重绘都算一次），所以在这里配音要以"这张卡"为单位
+  去重（`BB_PAGE_NOW`），不能以"这个声音"为单位。32 张扉页、32 记翻页声，
+  自动播放的日志里一一对得上。
+
+循环做在文件里（频谱法 + 整数个周期的包络），因为 Ren'Py 的 `loop=True`
+只是接着重排队列，没有嵌入的循环点，文件自己接不上一听就知道。
+
 ## 跑起来
 
 需要 [Ren'Py 8.x](https://www.renpy.org/latest.html)。
@@ -84,6 +114,7 @@ renpy.exe blackbird-vn compile  # 编译
 | `tools/build_assets.py` | 素材清洗：背景裁 1920×1080，立绘自适应抠品红底＋去溢色＋底边渐隐 |
 | `tools/build_ui_assets.py` | PIL 画界面硬件：桌环、席位点、规则线、图钉、回形针、装订孔、角章 |
 | `tools/build_fonts.py` | 从 `fonts_src/` 的全量 Noto Sans CJK 裁出本作字表，写回 `game/fonts/`（16MB → 0.5MB）；顺带把 OFL 授权文本从源字体 name 表里取出来并排放好 |
+| `tools/build_audio.py` | 合成全部声音素材到 `game/audio/`：四条无缝循环环境音（频谱法）+ 四记音效，纯程序生成，不用一条录音 |
 | `tools/build_icon.py` | 用静默章拼出 `game/icon.ico` 和 `game/icon.png`；窗口图标用 png（pygame 读不了 ico 里 256 那条 PNG 压缩项），ico 留给 Windows 可执行文件 |
 | `tools/check_fonts.py` | 缺字闸门：`game/*.rpy` 里每个字都必须在对应字体 cmap 里，缺了就渲染成空白 |
 | `tools/check_verbatim.py` | 改编不变量：台词逐字可溯 + 三条体例 |
@@ -96,6 +127,8 @@ renpy.exe blackbird-vn compile  # 编译
 没有测试员，所以留了几条机器能跑的检查：
 
 ```
+python tools/build_fonts.py         # 改完文案先重裁字表
+python tools/build_audio.py         # 只在新增/调整声音时跑（跑一次约几十秒，产物进 git）
 python tools/test_logic.py          # 逻辑：反驳／沉默／循环／拼字
 python tools/test_content.py        # 跨文件完整性与公平性
 python tools/check_verbatim.py      # 改编不变量
@@ -103,8 +136,12 @@ python tools/check_fonts.py         # 缺字（改完文案必须重跑）
 renpy.exe blackbird-vn lint         # 语法与未引用图像
 cd blackbird-vn && rm -f shots/*.png && RENPY_SKIP_MAIN_MENU=1 BB_SHOT=1 BB_SHOT_DIR=shots renpy.exe .
 python tools/make_contact.py 4      # shots/_contact.png
-cd blackbird-vn && RENPY_SKIP_MAIN_MENU=1 BB_AUTOPLAY=1 renpy.exe .   # 全六日无点击跑通，stdout 应只有 [AUTO] 行
+cd blackbird-vn && RENPY_SKIP_MAIN_MENU=1 BB_AUTOPLAY=1 renpy.exe .   # 全六日无点击跑通
 ```
+
+自动播放的日志里除 `[AUTO]` 还有 `[AMB]`（换了地点的环境音）和 `[PAGE]`（每张扉页
+一记翻页声）。`[AMB]` 连续两行同一条就是抽气，`[PAGE]` 比 `[AUTO]` 的扉页多就是重跑，
+见"声音"一节。
 
 改了文案要先重跑 `python tools/build_fonts.py` 再跑 `check_fonts.py`：
 裁剪出来的字表是静态的，新字渲染成空白而不报错。
