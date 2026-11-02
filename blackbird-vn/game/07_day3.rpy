@@ -191,7 +191,7 @@ label ch13:
     N "不是我。是我记不清了。"
     N "我把这句话咽了回去。"
     call bb_search("bg_hall_table", "大厅 · 木匣摊开之处", FACE_SPOT)
-    N "木匣还摊在矮木几上。主人把几面清空，说：第三遍。"
+    N "木匣还摊在八仙桌上。主人把桌面清空，说：第三遍。"
     call bb_debate_run(round3)
     call bb_result_card(round3)
     jump day3_pass

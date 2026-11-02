@@ -315,7 +315,7 @@ init -1 python:
                 # 所以把"收在这里"和"还剩几句没听过"接在同一条尾巴上，交给结算页去说。
                 _left = len(self.statements) - len(self.heard)
                 self.message += ("\n\n机会用尽了，这一轮收在这里。"
-                                 + ("还有 %d 句没有听过。" % _left if _left else ""))
+                                 + ("还有 " + bb_cn(_left) + " 句没有听过。" if _left else ""))
 
         def advance(self):
             """听完一句往下走；走到末尾就回到第一句，重听一轮。

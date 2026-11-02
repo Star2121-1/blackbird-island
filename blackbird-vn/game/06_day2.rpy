@@ -8,7 +8,7 @@
 
 # ---------------- 第七章：绣标 ----------------
 label ch7:
-    call screen bb_card("第七章", "绣标", "袖口里缝着一枚守望者的绣标。", "十一月十八日", BB_SNAP("bg_hall_long.jpg"))
+    call screen bb_card("第七章", "绣标", "袖口里缝着一枚守望者的绣标。", "十一月十八日", BB_SNAP("bg_hall_ring.jpg"))
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     # 终稿 1340–1348：这一页笔记是"陈"从一个签名变成一个身份的唯一现场。
@@ -19,7 +19,7 @@ label ch7:
     GU "又是这个陈。这次，它有了一个身份——守望者。"
     GU "我忽然明白了一件事：我一直在找陈是谁，却从来没有想过，陈可能不是一个名字，而是两代人。"
     GU "窗外的雨没有停。"
-    scene bg_hall_long
+    scene bg_hall_ring
     show spr_me as talker at bb_talk_r
     ME "天亮的时候，我睡不着。"
     ME "我确定我姓陈。我确定我叫陈默。"

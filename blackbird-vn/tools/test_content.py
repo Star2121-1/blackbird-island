@@ -599,7 +599,9 @@ BG_REG = dict(re.findall(r'^image (bg_[a-z0-9_]+) = BB_IMG\("([a-z0-9_]+)\.jpg"'
                          imgs_src, re.M))
 SPR_REG = dict(re.findall(r'^image (spr_[a-z0-9_]+) = BB_PLAIN\("([a-z0-9_]+)\.png"',
                           imgs_src, re.M))
-check("注册了背景（%d 张）" % len(BG_REG), len(BG_REG) >= 15)
+# 下限防的是"注册表悄悄缩水到没有"。13 不是凑出来的：原著没有餐厅，也没有船库
+# （晚餐就在大厅那张长桌上，终稿 119），那两张是凭空造的房间，第六轮删掉的。
+check("注册了背景（%d 张）" % len(BG_REG), len(BG_REG) >= 13)
 check("注册了立绘（%d 张）" % len(SPR_REG), len(SPR_REG) >= 9)
 
 assets = io.open(os.path.join(HERE, "tools", "build_assets.py"), encoding="utf-8").read()

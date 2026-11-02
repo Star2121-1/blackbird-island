@@ -65,7 +65,7 @@ label ch21:
     show spr_su as talker at bb_talk_r
     SU "二〇一三，立牌的人，复核的人，同一个？"
     N "王剑坐在那一头，没有动。"
-    scene bg_east_wing
+    scene bg_hall_table
     N "沈南舟没有回答这一句。他转身，向楼梯走去。"
     show spr_shen as talker at bb_talk_r
     SHEN "诸位，"
@@ -155,7 +155,7 @@ label ch24:
     N "夜，落进大厅。雾没有散。"
     N "沈南舟的那只信封，没有留在大厅里。"
     N "八仙桌还在。七只杯子，都满着。那只空着的位置，收走了。那一截浅白的纸，也不在了。"
-    scene bg_boathouse
+    scene bg_dock
     N "码头上，渡轮六点不返。小艇，也不在了。这座岛，今夜，留住我们。"
     scene bg_hall_table
     show spr_me as talker at bb_talk_r

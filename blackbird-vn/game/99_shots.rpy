@@ -3,6 +3,14 @@
 # 全程只用 show/hide + pause，不产生需要点击的交互。
 # 抓出来的图拼在 shots/contact.png，用 tools/make_contact.py 生成。
 
+# 确认框在真玩法里由 confirm 内联，那一层自带 modal＋压暗；截图为了绕开 modal
+# 与 pause 互锁，只截 bb_confirm_panel，于是背景是亮的——审图的人据此报过一轮
+# "弹窗没压暗，底下的 1／2 和正文撞在一起"。补一层假的压暗，让这张图说实话。
+screen bb_shot_dim():
+    zorder 150
+    add "#0b0d1099"
+
+
 label shot_all:
     # 键位诚实闸门的料：把引擎真正生效的那几张表抄出来，给 tools/test_content.py 对。
     # 闸门跑在纯 python 里，读不到运行中的 config.keymap——没有这份档，
@@ -178,7 +186,7 @@ label shot_all:
     # ① 带"六日总账"那一行的结算页（第一夜不显示它，17 也不显示）。
     $ bb_silence_won = 10
     $ bb_silence_possible = 20
-    show screen bb_result(4, 6, ["他说的每一句都对得上他自己那一趟。这一句没有对得上任何东西。\n\n机会用尽了，这一轮收在这里。还有 3 句没有听过。",
+    show screen bb_result(4, 6, ["他说的每一句都对得上他自己那一趟。这一句没有对得上任何东西。\n\n机会用尽了，这一轮收在这里。还有三句没有听过。",
                                  "四处沉默。还有两句话，说完了。", "主人没有沉默。他把问题推回我手上——那一条不算赢。"],
                           head="第三夜 · 结算", sub="逼出来的停顿")
     pause 2.4
@@ -189,11 +197,13 @@ label shot_all:
     #    截的是 bb_confirm_panel（modal 的 confirm 会把 pause 卡住），底下垫真的桌子。
     show screen bb_debate(round1)
     pause 0.4
-    show screen bb_confirm_panel("还有 3 句没有听过，听过才会有新东西到手。沉默按现在的数目记账。",
+    show screen bb_shot_dim
+    show screen bb_confirm_panel("还有三句没有听过，听过才会有新东西到手。沉默按现在的数目记账。",
                                  Return(), Return())
     pause 2.4
     $ _shot("19_confirm")
     hide screen bb_confirm_panel
+    hide screen bb_shot_dim
     hide screen bb_debate
 
     # ③ 全停下来那一局的动作栏：要看得见"都停下来了"。

@@ -7,8 +7,8 @@
 
 # ---------------- 第二章：拼图（晚餐 · 八人围桌） ----------------
 label ch2:
-    call screen bb_card("第二章", "拼图", "没有人真正在吃。", "十一月十七日", BB_SNAP("bg_dining.jpg"))
-    scene bg_dining
+    call screen bb_card("第二章", "拼图", "没有人真正在吃。", "十一月十七日", BB_SNAP("bg_hall_long.jpg"))
+    scene bg_hall_long
     N "晚餐开始得很准时。"
     N "八个人围坐在一张长桌旁，银质餐具碰撞瓷盘发出清脆的声响。"
     N "菜肴是精致的法式料理，但没有人真正在吃。每个人都在观察，在试探，在从对方的表情和言语中打捞信息。"

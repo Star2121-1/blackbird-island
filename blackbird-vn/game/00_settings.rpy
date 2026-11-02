@@ -358,13 +358,13 @@ init python:
     # 28 张卡各写一个参数，不如在这里查一次表。
     BB_AMB_BY_BG = {
         "bg_dock": "amb_sea", "bg_shore": "amb_sea",
-        "bg_boathouse": "amb_sea", "bg_manor_ext": "amb_sea",
+        "bg_manor_ext": "amb_sea",
         "bg_corridor": "amb_wind",
         "bg_east_wing": "amb_rain", "bg_east_wing_room": "amb_rain",
         "bg_bridge_night": "amb_rain",
         "bg_hall_long": "amb_room", "bg_hall_ring": "amb_room",
         "bg_hall_table": "amb_room",
-        "bg_dining": "amb_room", "bg_study": "amb_room",
+        "bg_study": "amb_room",
         "bg_bedroom_day": "amb_room",
         "bg_hangzhou": "amb_room",
     }
@@ -417,10 +417,15 @@ init python:
         """回主菜单会走 full_restart，而引擎在这条路上不 fadeout 任何声道
         （main.py 只在 QuitException 和普通异常两支里停音）——海浪就这么压在封面下。
         start_callbacks 每次重启跑一遍，正好在这儿收掉；读档时它先于 after_load 跑，
-        所以不会把上面那条重放抢掉。"""
+        所以不会把上面那条重放抢掉。
+        人声同理：对质说到一半按 Esc 回主菜单，那句 mp3 会一路念到封面底下。"""
         if renpy.context()._main_menu:
             renpy.music.stop(channel="ambience", fadeout=1.2)
             BB_AMB_NOW["file"] = None
+            # 不叫 bb_voice_stop()：那条按 BB_VOICE_NOW 去重，而 full_restart 会先把
+            # default 的它抹回 None，于是判断"没在放"、声道照旧响。和环境音一样无条件停。
+            renpy.music.stop(channel="voice", fadeout=0.5)
+            BB_VOICE_NOW["file"] = None
 
     config.start_callbacks.append(bb_amb_at_start)
 
@@ -481,6 +486,25 @@ init python:
             return
         BB_VOICE_NOW["file"] = None
         renpy.music.stop(channel="voice", fadeout=0.5)
+
+    # 回滚。Ren'Py 8.5 没有 config.after_rollback_callbacks（写上去 init 直接炸：
+    # "is not a known configuration variable"），而引擎回退时不重跑脚本层的 $——
+    # 对质那一轮的 `$ rt.hear_current()` 写在 while 里（03_flow.rpy:408），
+    # 所以人翻回上一句，屏幕上换了句子，嘴上还在念刚被翻走的那一句。
+    # 不轮询、不挂 periodic_callback：屏幕每次重绘都会跑自己的 $，回滚也一样，
+    # 所以把"对表"这件事放到 bb_debate 里去（见那里的 $ bb_voice_sync）。
+    def bb_voice_sync(d):
+        """屏幕上此刻是哪一句，voice 声道就该是哪一句。"""
+        if renpy.predicting() or not d.statements:
+            return
+        f = BB_VOICE.get(d.cur().text)
+        if BB_VOICE_NOW["file"] == f:
+            return
+        # 换了句子就先掐再放：往回翻要停，翻进一句没配的也要停。
+        renpy.music.stop(channel="voice", fadeout=0.3)
+        BB_VOICE_NOW["file"] = f
+        if f:
+            renpy.music.play(f, channel="voice", fadein=0.3)
 
 
 # ---------- 标题屏的一条判据 ----------

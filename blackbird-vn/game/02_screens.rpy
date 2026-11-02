@@ -26,6 +26,14 @@ init python:
 
     BB_CN8 = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
 
+    def bb_cn(n):
+        """写进句子里的数目用汉字。"还有 3 句没有听过"挨着"还有两句话"，
+        同一屏两种记数法，读起来像两份不同的稿子拼的。
+        账面上的数（4／6、33／33）照旧走阿拉伯——那是清点，不是说话。"""
+        if 1 <= n <= len(BB_CN8):
+            return BB_CN8[n - 1]
+        return str(n)
+
     def bb_seat_no(name):
         """席次号。身份靠姓氏 + 席位承担，不靠每人一个色相。"""
         if name in SEATS:
@@ -355,7 +363,7 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
     use bb_head("卷宗", title)
     add "images/ui/rule_bound.png":
         xsize 3
-        ysize 680
+        ysize 740
         xalign 0.315
         yalign 0.575
         yanchor 0.5
@@ -381,7 +389,10 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
         xanchor 0.5
         yalign 0.575
         yanchor 0.5
-        ysize 680
+        # 680 → 740：设置页在"声音"那一节加了人声之后，最后一格"人声音量"被视口
+        # 沿切在一道笔画上——看着像渲染坏了，不像还能往下滚。而"不想听就关掉"
+        # 恰恰是这一页最多人要找的那一格。框底从 961 走到 991，仍在 5% 安全区内。
+        ysize 740
         padding BB_PAD_PAGE
         background BB_PAGE
         if scroll == "fixed":
@@ -395,7 +406,7 @@ screen game_menu(title, scroll=None, yinitial=0.0, padding=0):
                 yfill True
                 viewport:
                     xsize 1090
-                    ysize 628
+                    ysize 688
                     child_size (1090, None)
                     yinitial yinitial
                     mousewheel True
@@ -735,7 +746,9 @@ screen bb_card(chapter, title, sub, day="", snap=None):
     $ num = "序" if chapter == "序章" else (chapter[1:-1] if chapter.startswith("第") and chapter.endswith("章") else "")
     $ num_size = 460 // max(1, len(num))
 
-    text num xalign 0.80 xanchor 0.5 yalign 0.46 yanchor 0.5 size num_size color "#0b0d1012" font bb_serif_b
+    # 7% 的墨在两三笔的水印上就散了：第一章那一道横淡到像纸上的脏印，不像数字。
+    # 提到 12%——厚的（二十三）仍然只是压住纸纹，薄的（一、二、三）终于站得住。
+    text num xalign 0.80 xanchor 0.5 yalign 0.46 yanchor 0.5 size num_size color "#0b0d101e" font bb_serif_b
 
     vbox:
         xalign 0.06
@@ -846,6 +859,9 @@ screen bb_explore(bg, spots, found, hint):
 # ---------------- 圆桌对质：卷宗里的一张示意图 ----------------
 screen bb_debate(d):
     zorder 60
+    # 声音跟着屏幕走，不跟着脚本走：回滚不重跑 03_flow 里那句 $ rt.hear_current()，
+    # 只有这一屏会重绘。同一句反复重绘由 BB_VOICE_NOW 去重，不会一帧一响。
+    $ bb_voice_sync(d)
     use bb_page_bg()
     add "images/ui/table_ring.png"
 
@@ -1003,7 +1019,7 @@ screen bb_debate(d):
         # 不能只问"结束这一轮？"——那等于让玩家在看不见代价的地方签字。
         $ _unheard = len(d.statements) - len(d.heard)
         textbutton "结束本轮" action Confirm(
-            ("还有 %d 句没有听过，听过才会有新东西到手。" % _unheard if _unheard else "这一轮的句子都听过了。")
+            ("还有 " + bb_cn(_unheard) + " 句没有听过，听过才会有新东西到手。" if _unheard else "这一轮的句子都听过了。")
             + "沉默按现在的数目记账。", Return(("end", None))) style "bb_btn" text_style "bb_btn_text" xfill True
 
     if d.message:
@@ -1185,7 +1201,10 @@ screen bb_result(silence, total, lines, head="第一轮 · 结算", sub="逼出�
     # 六日的总账只有在这一屏能看到。第一夜（total 就是全部）和收卷（total 就是
     # 总账）不重复报——那一行只会把已经很大的数字再抄一遍。
     if bb_silence_possible > total:
-        text "六日总账　" + str(bb_silence_won) + " ／ " + str(bb_silence_possible) + " 处" style "bb_micro" xalign 0.95 xanchor 1.0 yalign 0.905
+        # 这一行是"整本还差几处"的总账，玩家拿它决定要不要回头补。
+        # 原先走 bb_micro＋铅笔灰，压在纸折上量出来不到九个像素——
+        # 页边的批注可以是淡的，账不行。
+        text "六日总账　" + str(bb_silence_won) + " ／ " + str(bb_silence_possible) + " 处" style "bb_body_sub" color bb_ink xalign 0.95 xanchor 1.0 yalign 0.905
 
     hbox:
         xalign 0.5

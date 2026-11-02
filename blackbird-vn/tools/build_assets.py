@@ -12,7 +12,7 @@ import re
 import sys
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter
 from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,10 +23,20 @@ BG_TARGET = (1920, 1080)
 # 每一条 image bg_* 都得在这儿有名字，反过来也一样：
 # 漏了名的图不会被这条管线重建，删空 game/images/ 再跑一次就缺一块，
 # 而游戏里那一屏会静默退化成纯色占位——不报错，只是没人知道。
+# 名字反过来也要对得上原著：bg_dining（餐厅）和 bg_boathouse（船库）出过又删了，
+# 因为终稿从头到尾没有这两个地方——晚餐就在大厅那张长桌（终稿 119），
+# 而那张长桌在第一天夜里被撤走换成环形沙发（终稿 898）。
+# 造一个原著没有的房间，代价是同一张长桌在玩家眼里变成两个地点。
 BG_KEYS = ["bg_hangzhou", "bg_dock", "bg_hall_long", "bg_hall_ring", "bg_study",
-           "bg_east_wing", "bg_corridor", "bg_dining", "bg_shore",
+           "bg_east_wing", "bg_corridor", "bg_shore",
            "bg_hall_table", "bg_bridge_night", "bg_east_wing_room",
-           "bg_manor_ext", "bg_boathouse", "bg_bedroom_day"]
+           "bg_manor_ext", "bg_bedroom_day"]
+
+# 按张给一档曝光，不给全局：这套装进游戏之前还要压一层纸纱，而纱压不住高光。
+# 量过十三张的平均亮度（0–255）：其余十二张落在 20–85，杭州阅览室那张是 117.9，
+# 整片白墙和落地窗，压完纱仍然读起来像一张没洗过的样片，不像"压在纸下的照片"。
+# 0.70 把它带到 82，正好回到那一堆里；全局调暗会把最暗那两张（20、25）一起闷死。
+BG_EXPOSURE = {"bg_hangzhou": 0.70}
 SPR_KEYS = ["spr_shen", "spr_wang", "spr_zhao", "spr_fang", "spr_zhou",
             "spr_lin", "spr_su", "spr_me", "spr_gu"]
 # 立绘统一画布 + 统一头高。头高定标，人站同一条底线；画布定宽，头才落在席次上。
@@ -73,6 +83,8 @@ def build_bg(key):
     # 生成图右下角那行水印贴着底边，切掉底部 8% 再 cover，比事后涂掉干净
     im = im.crop((0, 0, w, int(h * 0.92)))
     im = cover_resize(im, BG_TARGET)
+    if key in BG_EXPOSURE:
+        im = ImageEnhance.Brightness(im).enhance(BG_EXPOSURE[key])
     im = im.filter(ImageFilter.GaussianBlur(0.4))
     out = os.path.join(DST, key + ".jpg")
     im.save(out, "JPEG", quality=86, optimize=True)
