@@ -168,6 +168,21 @@ cd blackbird-vn && RENPY_SKIP_MAIN_MENU=1 BB_AUTOPLAY=1 renpy.exe .   # 全六�
 以前自动播放只打一行日志就走"离开此处"，可收集性只被 `test_content.py` 静态查过，
 没被真跑过一遍。改了取证点或破绽表而这一行不再是 33／14，就是漏了东西在某一处。
 
+存读回归是同一趟跑完的第二趟：第一趟在尾声 `renpy.save("regress")` 后收工，
+第二趟带 `BB_LOAD=1` 开起来就在 `start` 里读回这一档，打一行
+`[LOAD] 读回 证据 33 沉默 14`。两个数都要对得上第一趟——它盯的是"读档把状态读丢了"：
+
+```
+cd blackbird-vn && RENPY_SKIP_MAIN_MENU=1 BB_AUTOPLAY=1 renpy.exe .   # 第一趟，末尾存盘
+cd blackbird-vn && RENPY_SKIP_MAIN_MENU=1 BB_LOAD=1 renpy.exe .      # 第二趟，读回来
+```
+
+这条回归第一次跑就抓到一只真 bug：`have` 原先在 `init python:` 里赋成 `set()`，
+运行时往里 `add`。引擎把 init 造出来的对象按"还是 init 那一个"处理，不把它的内容写进档，
+于是重开游戏读档回来证据是空的（沉默数在，因为标量是重新赋值的）——玩家看到的正是
+"读档把手里的证据读没了"。现在 `have` 是 `default`，`test_content.py` 里加了一条
+静态闸门：init 里赋值、运行时又 add／append 的容器，必须声明成 `default`。
+
 改了文案要先重跑 `python tools/build_fonts.py` 再跑 `check_fonts.py`：
 裁剪出来的字表是静态的，新字渲染成空白而不报错。
 

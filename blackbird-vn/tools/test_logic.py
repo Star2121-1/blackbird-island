@@ -14,6 +14,9 @@ src = io.open(DATA, encoding="utf-8").read()
 m = re.search(r"^init -1 python:\n((?:(?:    .*)?\n)*)", src, re.M)
 body = "\n".join(l[4:] if l.startswith("    ") else l
                  for l in m.group(1).split("\n"))
+# 数据层里的 default 变量（have 就是）在 init 块外面，抽出 body 时带不到，
+# 但 ev_give 要用它。引擎的顺序是 init 先、default 在上下文开始时求值，这里照抄。
+defaults = re.findall(r"^default\s+(\w+)\s*=\s*(.+?)\s*$", src, re.M)
 
 fake = types.ModuleType("renpy")
 fake.notify = lambda *a, **k: None
@@ -28,6 +31,8 @@ sys.modules.setdefault("renpy", fake)
 
 g = {"renpy": fake, "bb_sfx": lambda *a, **k: None}
 exec(compile(body, DATA, "exec"), g)
+for _n, _e in defaults:
+    g[_n] = eval(_e, g)
 
 fails = []
 

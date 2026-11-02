@@ -238,6 +238,23 @@ check("热点不整句复述正文旁白（复述 %d 句）" % len(dupes), not d
 for d in dupes:
     info(d)
 
+
+# ---------------- 存档带得走的容器必须是 default ----------------
+# 实测来的：have 早先是 `init python:` 里 `have = set()`，运行时往里 add。
+# 引擎把 init 造出来的对象按"还是 init 那一个"处理，不把它的内容写进档——
+# 于是全六日跑完存一档，重开游戏只读档：沉默 14 条回来了（标量是重新赋值的），
+# 证据 0 条。玩家视角就是"读档把手里的证据读没了"。
+data_src = io.open(os.path.join(GAME, "01_data.rpy"), encoding="utf-8").read()
+init_blk = re.search(r"^init -1 python:\n((?:(?:    .*)?\n)*)", data_src, re.M).group(1)
+at_init = set(re.findall(r"^    (\w+) = (?:set\(\)|\[\]|\{\})$", init_blk, re.M))
+runtime_add = set(re.findall(r"^\s+(\w+)\.(?:add|append)\(", data_src, re.M))
+declared = set(re.findall(r"^default (\w+) = ", data_src, re.M))
+unsaveable = sorted(n for n in at_init & runtime_add if n not in declared)
+check("运行时往里加东西的容器都声明成了 default（漏 %d 个）" % len(unsaveable),
+      not unsaveable)
+for n in unsaveable:
+    info("%s 在 init 里赋值、运行时 add／append，但没声明 default——存档带不走" % n)
+
 print("")
 if fails:
     print("FAILED: %d" % len(fails))

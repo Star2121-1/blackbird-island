@@ -23,6 +23,10 @@ init python:
 
 
 label start:
+    if os.environ.get("BB_LOAD"):
+        # 存读回归的第二趟：读回上一趟在尾声存的那档，从这里就不再往下走了，
+        # 上下文直接跳到存盘点之后（尾声），由那里打一行"读回"再收工。
+        $ renpy.load("regress")
     $ have.clear()
     $ bb_auto = bool(os.environ.get("BB_AUTOPLAY"))
     if bb_auto:
@@ -359,5 +363,14 @@ label epilogue:
     call screen bb_result(bb_silence_won, bb_silence_possible, tally,
                           head="收卷", sub="合上的一页")
     if bb_auto:
+        # 存读回归的第二趟：档已经在 start 里读回来了，这里的 have／沉默数是档里的数。
+        if os.environ.get("BB_LOAD"):
+            $ bb_trace("[LOAD] 读回 证据 " + str(len(have)) + " 沉默 " + str(bb_silence_won))
+            $ renpy.quit()
+        # 第一趟：整本跑完的最后一刻真的存一次，供第二趟读回来。
+        # 读档要过的 after_load 回调（环境音那条得重置）、档里的五个 Debate 对象，
+        # 只有在这里才被真碰一次——以前只在标题屏上探过"存进去不报错"。
+        $ renpy.save("regress")
+        $ bb_trace("[LOAD] 存盘 证据 " + str(len(have)) + " 沉默 " + str(bb_silence_won))
         $ renpy.quit()
     return
