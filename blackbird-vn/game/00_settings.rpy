@@ -179,7 +179,10 @@ style bb_btn is button:
     padding (34, 14)
     background Frame("images/ui/frame_chip.png", 14, 14)
     hover_background Frame("images/ui/frame_chip_hover.png", 14, 14)
-    selected_background Frame("images/ui/frame_chip_sel.png", 14, 14)
+    # 菜单里的"选中"不走金：图例说金细边＝正在说话的那一位，而 ShowMenu／Preference
+    # 这类动作一命中就把按钮标成 selected，设置页和侧栏会满屏发金。
+    # 双细线是它自己的形状（悬停＝单粗线）。金只留给发言席和手里的证据。
+    selected_background Frame("images/ui/frame_chip_sel_ink.png", 14, 14)
     insensitive_background Frame("images/ui/frame_chip.png", 14, 14)
     hover_xoffset 6
     selected_xoffset 6
@@ -190,7 +193,7 @@ style bb_btn_text is bold:
     size BB_T_CTRL
     color bb_ink
     hover_underline True
-    selected_color bb_gold_dark   # 只有"举起来的证据"配得上金
+    selected_color bb_ink   # 同上：菜单按钮的选中态靠框形，不靠金
     insensitive_color bb_edge_txt
 
 style bb_tab is button:
@@ -198,7 +201,7 @@ style bb_tab is button:
     padding (26, 14)
     background Frame("images/ui/frame_chip.png", 14, 14)
     hover_background Frame("images/ui/frame_chip_hover.png", 14, 14)
-    selected_background Frame("images/ui/frame_chip_sel.png", 14, 14)
+    selected_background Frame("images/ui/frame_chip_sel_ink.png", 14, 14)
     insensitive_background Frame("images/ui/frame_chip.png", 14, 14)
     hover_xoffset 14
     selected_xoffset 14
@@ -206,11 +209,19 @@ style bb_tab is button:
 style bb_tab_text is bb_btn_text:
     size BB_T_SUB
 
+# Esc 那一页的侧栏有十一个标签：760 高的区域按默认内边距排到第十一个就出屏，
+# "退出游戏"落在玩家够不着的地方。这一列单独收紧，其余菜单照旧。
+style bb_tab_nav is bb_tab:
+    padding (26, 7)
+
+style bb_tab_nav_text is bb_tab_text:
+    size BB_T_LABEL
+
 style bb_slot is button:
     padding (10, 10)
     background Frame("images/ui/frame_chip.png", 14, 14)
     hover_background Frame("images/ui/frame_chip_hover.png", 14, 14)
-    selected_background Frame("images/ui/frame_chip_sel.png", 14, 14)
+    selected_background Frame("images/ui/frame_chip_sel_ink.png", 14, 14)
     # 悬停不能只靠"描边变粗"——存档格里挨着的十二格，谁被选中要一眼分得出，
     # 所以给它挪位。网格间距 12，只挪 6，永远碰不到邻格。
     hover_xoffset 6
@@ -227,6 +238,10 @@ style bb_ev is button:
 
 style bb_ev_text is bb_btn_text:
     size BB_T_LABEL
+    # 证据条和发言席走的是 bb_ev／frame_chip_sel，那两处金是有账的：
+    # 图例承诺"金细边＝正在说话的那一位"、"纸片：手里的证据，举起来才变色"。
+    # 菜单侧刚被改成双细线，这里得把金要回来。
+    selected_color bb_gold_dark
 
 style bb_bar is bar:
     left_bar bb_ink

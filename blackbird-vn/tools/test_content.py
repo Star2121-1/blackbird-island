@@ -132,6 +132,23 @@ for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
 # ---------------- 3) 断言 ----------------
 check("证据表非空（%d 条）" % len(EVIDENCE), len(EVIDENCE) >= 30)
 
+# 图鉴按章报"缺几条"的那几行，读的是 BB_CH_ORDER。它先被建出来、又被下面
+# 一句"顺手重置"清空过一次——空表让 ev_chapter_counts() 永远返回 []，
+# 图鉴上承诺的分组行就一行都不画，而游戏照开、lint 照绿。
+ch_order = g["BB_CH_ORDER"]
+check("图鉴的章节表非空（%d 章）" % len(ch_order), bool(ch_order))
+check("章节表覆盖每一条证据（漏 %d 章）" % len(
+    set(EVIDENCE[k].chapter for k in EVIDENCE) - set(ch_order)),
+    set(EVIDENCE[k].chapter for k in EVIDENCE) <= set(ch_order))
+g["have"] = set(EVIDENCE)      # have 是 `default`，引擎才造得出来，这里当"全收齐"来算
+counts = g["ev_chapter_counts"]()
+check("按章计数真的能算出行（%d 行）" % len(counts), bool(counts))
+check("按章加起来的总数等于证据条数（算成 %d）" % sum(c[2] for c in counts),
+      sum(c[2] for c in counts) == len(EVIDENCE))
+check("全收齐时每章都显示收满（没满的 %d 章）"
+      % len([c for c in counts if c[1] != c[2]]),
+      all(c[1] == c[2] for c in counts))
+
 check("正文文件都在 FILE_DAY 登记了日序（漏 %d 个）" % len(unregistered),
       not unregistered)
 for n in sorted(unregistered):
@@ -214,9 +231,13 @@ check("反问句不写成沉默也不借用翻页收尾（违 %d 句）" % len(b
 # 顾言笙写笔记的日子（二〇二五年十一月四日起）是两套日历，一夜之间来回切。
 # 扉页刚把日期盖成岛上的十一月十八日，下一段笔记念的却是十一月六日——
 # 少了重盖的那一行，玩家看到的就是一个记错日子的本子。
+# 比的是"每一个报了日期的抬头"，不是"每一段杭州景的第一个抬头"：六夜只给六段笔记，
+# 于是终稿同一天的两条笔记会并进同一个 scene 里（十一日白天＋十二日清晨），
+# 只看第一个的话，后面那几条换日子的抬头就没人管了。
 HANGZHOU = "scene bg_hangzhou"
 NOTE_DATE = re.compile(r'^\s*N "[^"]*十一月([一二三四五六七八九十]+)日')
 STAMP = re.compile(r'\$ bb_day = "二〇二五年十一月([一二三四五六七八九十]+)日"')
+LOOKBACK = 40
 
 hangzhou = 0
 no_stamp = []
@@ -226,24 +247,45 @@ for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
         continue
     lines = io.open(p, encoding="utf-8").read().split("\n")
     for i, line in enumerate(lines):
-        if HANGZHOU not in line:
+        m = NOTE_DATE.match(line)
+        if not m:
+            continue
+        # 只比杭州那间书房里的笔记：往上找最近的一条 scene，不是 bg_hangzhou 就跳过
+        # （岛上正文里也有"十一月十七日"这样的旁白，那用的是另一套日历）。
+        above = [lines[j].strip() for j in range(i - 1, max(-1, i - LOOKBACK), -1)]
+        near = next((s for s in above if s.startswith("scene ")), None)
+        if near is None or HANGZHOU not in near:
             continue
         hangzhou += 1
-        narr = next((m.group(1) for j in range(i, min(len(lines), i + 5))
-                     for m in [NOTE_DATE.match(lines[j])] if m), None)
-        if narr is None:
-            continue            # 这段没报日子（岛上人插进来的一句笔记），不比
-        got = next((m.group(1) for j in range(max(0, i - 3), min(len(lines), i + 4))
-                    for m in [STAMP.search(lines[j])] if m), None)
-        if got != narr:
+        got = next((g.group(1) for s in above for g in [STAMP.search(s)] if g), None)
+        if got != m.group(1):
             no_stamp.append("%s:%d 笔记念十一月%s日，HUD 盖的是%s"
-                            % (fname, i + 1, narr,
+                            % (fname, i + 1, m.group(1),
                                "十一月" + got + "日" if got else "岛上那天"))
 
-check("每段报了日期的杭州笔记都重盖了 HUD 日期（杭州景 %d 处，漏 %d 段）"
+check("每个报了日期的杭州笔记抬头都重盖了 HUD 日期（抬头 %d 处，漏 %d 段）"
       % (hangzhou, len(no_stamp)), not no_stamp)
 for b in no_stamp:
     info(b)
+
+# ---------------- 4b) 一条证据只有一个来处 ----------------
+# 同一件东西从两个地方被"第一次捡到"，玩家手里那条证据就有两个出处；
+# 而引用它的那句台词（第十八章"从她口袋里取出来的"）会跟着一起悬空。
+# 这一条抓过两次：书房门口的纸条（热点写成第二个来处）和守望者的绣标
+# （第八章从周亦安册子里已经拿到，东翼那一格又发了一次）。
+GIVE = re.compile(r'\$ ev_give\("([a-z_0-9]+)"\)')
+grants = {}
+for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    fname = os.path.basename(p)
+    if fname.startswith(("00_", "01_", "02_", "99_")):
+        continue        # 99_shots 是给截图预填状态的，不算剧情里的来处
+    for i, line in enumerate(io.open(p, encoding="utf-8").read().split("\n")):
+        for eid in GIVE.findall(line):
+            grants.setdefault(eid, []).append("%s:%d" % (fname, i + 1))
+twice = dict((k, v) for k, v in grants.items() if len(v) > 1)
+check("每条证据在剧情里只有一个来处（重复发放 %d 条）" % len(twice), not twice)
+for k in sorted(twice):
+    info("%s ← %s" % (k, "　".join(twice[k])))
 
 # ---------------- 5) 热点不复述正文 ----------------
 # bb_search 的出口是"看完了才能走"，所以每个热点玩家都必须点开。热点里若整句抄回

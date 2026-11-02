@@ -7,6 +7,19 @@
 
     python blackbird-vn/tools/build_ui_assets.py
 
+"可重建"要说准：随机数是钉死的（random.seed(20091117)），但纸面颗粒、字体描边
+这些像素是 Pillow 出的，换一个大版本就会整批重排——实测在这台机器上原样跑一遍
+会重写 17 张已经入库的素材，而入库那批是游戏截图与视觉基线比对过的。
+所以改一张图时不要整跑，点名只画要改的那一张：
+
+    python - <<'PY'
+    import importlib.util, os, sys
+    spec = importlib.util.spec_from_file_location('bua', 'tools/build_ui_assets.py')
+    m = importlib.util.module_from_spec(spec); sys.argv = ['x']; spec.loader.exec_module(m)
+    im, d = m.canvas(44, 44); ...; m.save(im, 'check_full.png')
+    PY
+
+跑完用 `git status blackbird-vn/game/images/` 数一下改了几张——多出来的就是顺手换的。
 九宫格用整幅纸当源图（Frame 会缩放中区，不会拉出条纹），
 所以边框必须是直线——任何撕纸边之类的非均匀轮廓都不能进九宫格。
 """
@@ -259,12 +272,14 @@ def build_hardware():
     save(im, "tape.png")
 
     # 清单框：空 / 勾 / 划线（已取）
+    # 勾用墨，不用锈——锈在这套界面里只有一个意思："被问到停下来"。
+    # 一个"开关打开了"的勾不是沉默；有勾／没勾本身就是形状差别，不需要再加一种颜色。
     for name, tick in (("check_empty", False), ("check_full", True)):
         im, d = canvas(44, 44)
         d.rectangle([5, 5, 39, 39], outline=INK + (255,), width=2)
         if tick:
-            d.line([9, 24, 18, 34], fill=RUST + (255,), width=4)
-            d.line([18, 34, 38, 8], fill=RUST + (255,), width=4)
+            d.line([9, 24, 18, 34], fill=INK + (255,), width=4)
+            d.line([18, 34, 38, 8], fill=INK + (255,), width=4)
         save(im, name + ".png")
 
 
@@ -680,6 +695,21 @@ def build_scans():
         print("MISS ink-abrasion-4")
 
 
+def build_sel_ink():
+    """菜单侧的"选中"（当前页、开着的子菜单）不能借用金框：图例写的是
+    "金细边＝正在说话的那一位"，而 ShowMenu／Preference 一命中就把按钮标成
+    selected，设置页和侧栏会满屏发金。给它一种自己的形状——双细线：
+    悬停是单粗线，选中是双细线，两者都是墨，靠线数分开，不新增色相。
+
+    放在整条流水线的最后、且不在预览表里出现：paper_sheet 会吃随机数，
+    插在中间会把后面每一个素材的颗粒噪声换一批。"""
+    im = paper_sheet(180, 64, PAPER, edge=False)
+    d = ImageDraw.Draw(im)
+    d.rectangle([0, 0, 179, 63], outline=INK + (255,), width=2)
+    d.rectangle([6, 6, 173, 57], outline=INK + (255,), width=1)
+    save(im, "frame_chip_sel_ink.png")
+
+
 def main():
     build_scans()
     build_frames()
@@ -692,6 +722,7 @@ def main():
     build_veils()
     build_photo_border()
     build_preview()
+    build_sel_ink()
 
 
 if __name__ == "__main__":

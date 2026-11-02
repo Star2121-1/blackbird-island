@@ -142,8 +142,8 @@ screen bb_head(kicker, title, sub=""):
         yalign 0.185
 
 
-screen bb_tab_item(label, act):
-    textbutton label action act style "bb_tab" text_style "bb_tab_text":
+screen bb_tab_item(label, act, st="bb_tab", tst="bb_tab_text"):
+    textbutton label action act style st text_style tst:
         xalign 1.0
 
 
@@ -292,21 +292,22 @@ screen navigation():
     tag menu
     use bb_page_bg()
     use bb_head("卷宗", "合上的一页", "暂停")
+    # 这一列有十一个标签。按 bb_tab 的默认内边距（上下各 14）排下来是 828 高，
+    # 而区域只有 760——第十一个"退出游戏"落到 y≈1030 以下，压穿 95% 安全线、
+    # 在 1080 的屏上直接出界：鼠标点不到，键盘能选中却看不见选中了什么。
+    # 所以这一列用收紧过的一档（bb_tab_nav：内边距 7、字号 24），
+    # 其余菜单只有九个标签，照旧用宽的那一档。
+    $ nav_items = [("继续读", Return()), ("存档", ShowMenu("save")), ("读档", ShowMenu("load")),
+                   ("已读的话", ShowMenu("history")), ("证据图鉴", ShowMenu("bb_gallery")),
+                   ("怎么读这份卷宗", ShowMenu("help")), ("纸上的记号", ShowMenu("bb_legend")),
+                   ("设置", ShowMenu("preferences")), ("这份卷宗", ShowMenu("about")),
+                   ("回到主菜单", MainMenu(confirm=True)), ("退出游戏", Quit(confirm=True))]
     vbox:
-        # 同标题屏：右界压在 1824，底边 250+760=1010 也留在下安全区里。
+        # 同标题屏：右界压在 1824，底边留在下安全区里。
         area (1504, 250, 320, 760)
-        spacing 8
-        use bb_tab_item("继续读", Return())
-        use bb_tab_item("存档", ShowMenu("save"))
-        use bb_tab_item("读档", ShowMenu("load"))
-        use bb_tab_item("已读的话", ShowMenu("history"))
-        use bb_tab_item("证据图鉴", ShowMenu("bb_gallery"))
-        use bb_tab_item("怎么读这份卷宗", ShowMenu("help"))
-        use bb_tab_item("纸上的记号", ShowMenu("bb_legend"))
-        use bb_tab_item("设置", ShowMenu("preferences"))
-        use bb_tab_item("这份卷宗", ShowMenu("about"))
-        use bb_tab_item("回到主菜单", MainMenu(confirm=True))
-        use bb_tab_item("退出游戏", Quit(confirm=True))
+        spacing 6
+        for _lab, _act in nav_items:
+            use bb_tab_item(_lab, _act, "bb_tab_nav", "bb_tab_nav_text")
 
     # 停下来时最该看见的是"我读到哪儿了"，所以这块进度摆在左边空页上。
     frame:
@@ -453,7 +454,8 @@ screen preferences():
 
         text "演　出" style "bb_label"
         use bb_pref_toggle("过渡动画", Preference("transitions", "toggle"))
-        use bb_pref_toggle("空行显示", Preference("show empty window", "toggle"))
+        # 原先这里有一格"空行显示"（show empty window）。对白页是手写的 screen say，
+        # 纸框无条件画，从不读这个开关——勾会动、框不动，是一格假开关，删掉。
 
         text "声　音" style "bb_label"
         use bb_pref_bar("环境音量", Preference("music volume"))
@@ -556,21 +558,21 @@ screen bb_legend():
     use game_menu("纸上的记号", scroll="viewport"):
         text "名　牌" style "bb_label"
         use bb_legend_row(Frame("images/ui/frame_chip_sel.png", 14, 14), "", "发言",
-                          "金细边：正在说话的那一位。")
+                          "金细边：正在说话的那一位。", False, bb_gold_dark)
         use bb_legend_row("images/ui/redaction.png", "images/ui/stamp_silence.png", "",
                           "涂黑条＋角章：逼出的沉默。锈色只此一处。")
         use bb_legend_row(Frame("images/ui/frame_chip_rebut.png", 14, 14), "images/ui/stamp_rebut.png", "反问",
-                          "虚线框：主人把问题推回你手上。冷蓝只此一处。")
+                          "虚线框：主人把问题推回你手上。冷蓝只此一处。", False, bb_cold_dark)
         text "纸　片" style "bb_label"
         use bb_legend_row("images/ui/clip.png", "", "",
                           "回形针夹着的纸片：手里的证据，举起来才变色。", True)
         use bb_legend_row("images/ui/hole.png", "", "",
                           "装订孔：翻过的地点，和已经抵上过一句话的证据。", True)
         use bb_legend_row("", "", "铅笔字",
-                          "铅笔灰是顾言笙的批注，不是手稿原文。")
+                          "铅笔灰是顾言笙的批注，不是手稿原文。", False, bb_pencil)
 
 
-screen bb_legend_row(mark, stamp, word, note, fit=False):
+screen bb_legend_row(mark, stamp, word, note, fit=False, wc=None):
     # 六格两组标题，行高 74、组间距 18，加起来 618——视口 628，刚好不用滚。
     # 说明文字一律压到一行：两行会顶穿这一格，和下一格叠在一起。
     frame:
@@ -596,10 +598,13 @@ screen bb_legend_row(mark, stamp, word, note, fit=False):
                     add mark:
                         xysize (200, 50)
             if word:
+                # 样张的字要真是那个颜色：这三行讲的就是"哪种颜色是什么意思"，
+                # 用正文字色排出来的"铅笔字／发言／反问"和右边的说明对不上。
                 text word:
                     xalign 0.5
                     yalign 0.5
                     style "bb_body_sub"
+                    color (wc if wc else bb_ink)
             if stamp:
                 add stamp:
                     xysize (52, 52)
@@ -906,11 +911,13 @@ screen bb_debate(d):
                     yalign 0.5
                 text EVIDENCE[d.selected].name style "bb_micro" color bb_gold_dark
         text bb_who(d.cur().speaker) style "say_who"
-        text d.cur().text style "say_what" xsize 1020
+        # 版面宽 1080 减 BB_PAD_PAGE 左右各 44，正文只许排到 992；
+        # 原来写 1020，换行的行尾会顶到纸的右内沿，右边距看着只有左边距的一半。
+        text d.cur().text style "say_what" xsize 992
         if d.selected:
             # 举起的那一条写了什么，就压在句子底下。原来写进批注框，而批注框与发言页
             # 同位同尺寸——一选证据，正在抵的那句话就被摘要盖掉，玩家只能凭记忆按反驳。
-            text EVIDENCE[d.selected].brief style "bb_micro" color bb_gold_dark xsize 1020
+            text EVIDENCE[d.selected].brief style "bb_micro" color bb_gold_dark xsize 992
         text "第 " + str(d.i + 1) + " ／ " + str(len(d.statements)) + " 句" style "bb_micro"
 
     frame:
@@ -969,7 +976,7 @@ screen bb_debate(d):
                 has vbox
                 spacing 10
                 text "批　注" style "bb_micro" color bb_pencil
-                text d.message style "bb_body_sub" xsize 1000
+                text d.message style "bb_body_sub" xsize 992
                 text "（点击批注收起，句子还在）" style "bb_micro" color bb_edge_txt xalign 1.0
 
 
@@ -1006,7 +1013,10 @@ screen bb_seat(d, name, stt, p):
                 # 涂黑条留在名字上，两个记号各说各的。
                 background Frame("images/ui/frame_chip_sel.png", 14, 14)
             has fixed
-            xysize (128, 40)
+            # 这块牌走的是 bb_ev，它自带左右各 20 的内边距：
+            # 128 宽加上去是 168，而邻座横向间隔只有 156——相邻两块牌的边框会交叠。
+            # 108＋40＝148，留 8 的缝；三个字的名字（首字＋涂黑条）实测 74 宽，装得下。
+            xysize (108, 40)
             if stt == "broken":
                 # 涂黑只盖名字，姓留住——停下来的是谁，必须读得出来。
                 hbox:
@@ -1074,7 +1084,9 @@ screen bb_hangman(hz, picked, msg, fails=0):
         frame:
             xsize 1240
             xalign 0.5
-            yalign 0.90
+            # 0.90 时这块的下沿在 972，而"不拼了"那颗按钮（bb_btn 内边距 14＋字 26）
+            # 从 960 就开始了——失败文案正好压在按钮上，最该看清的一句反而读不全。
+            yalign 0.855
             yanchor 1.0
             padding BB_PAD_SLIP
             background BB_SLIP
