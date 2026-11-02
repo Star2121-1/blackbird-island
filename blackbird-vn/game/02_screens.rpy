@@ -6,7 +6,8 @@
 #   2. 照片只在两种地方出现：整屏的底（压一层纸纱），和钉在纸上的翻拍（白边相纸）。
 #   3. 所有静态元素落在 5%–95% 的安全区里，不给电视留切边的机会。
 #   4. 状态不只用颜色：沉默＝涂黑条＋"静默"角章；反问＝虚线框＋"反问"角章；
-#      进行中＝金细边＋"发言"二字；已用完＝装订孔。
+#      进行中＝金细边＋"发言"二字；装订孔＝这条证据已经抵上过一句（还能再举，
+#      它记的是"用过"，不是"用完"）。
 #   5. 交互一律 "call screen -> _return -> 由 label 推进状态"，不做响应式状态。
 # ============================================================
 
@@ -212,16 +213,24 @@ screen quick_menu():
     zorder 100
     if quick_menu:
         hbox:
+            # xanchor 1.0：只有 xalign 0.95 时，那 0.95 定的是**左沿**，
+            # 整条向右长出去七个芯片——实测右界约 1854，压过 1824 那条 5% 安全线。
+            # 钉住右沿以后，字变长（自动多带一个"开/关"）只往左挤，永远不出界。
             xalign 0.95
+            xanchor 1.0
             yalign 0.05
             spacing 8
-            textbutton "日志" action ShowMenu("history") style "bb_ev" text_style "bb_ev_text"
-            textbutton "自动" action Preference("auto-forward", "toggle") style "bb_ev" text_style "bb_ev_text"
-            textbutton "跳过" action Skip() alternate Skip(fast=True, confirm=True) style "bb_ev" text_style "bb_ev_text"
-            textbutton "设置" action ShowMenu("preferences") style "bb_ev" text_style "bb_ev_text"
-            textbutton "图例" action ShowMenu("bb_legend") style "bb_ev" text_style "bb_ev_text"
-            textbutton "存" action ShowMenu("save") style "bb_ev" text_style "bb_ev_text"
-            textbutton "菜单" action ShowMenu("navigation") style "bb_ev" text_style "bb_ev_text"
+            # 这排芯片不走 bb_ev：那个样式的选中态是金细边，而金在这份卷宗里
+            # 已经有账——发言席、手里举起来的那条证据。菜单项跟着发金，
+            # 图例就成了谎话，所以给它一套只换形状、不换色相的选中态。
+            textbutton "日志" action ShowMenu("history") style "bb_qk" text_style "bb_qk_text"
+            # 开还是关不能只靠边框说：给文字自己带一个字。
+            textbutton ("自动·开" if _preferences.afm_enable else "自动·关") action Preference("auto-forward", "toggle") style "bb_qk" text_style "bb_qk_text"
+            textbutton "跳过" action Skip() alternate Skip(fast=True, confirm=True) style "bb_qk" text_style "bb_qk_text"
+            textbutton "设置" action ShowMenu("preferences") style "bb_qk" text_style "bb_qk_text"
+            textbutton "图例" action ShowMenu("bb_legend") style "bb_qk" text_style "bb_qk_text"
+            textbutton "存" action ShowMenu("save") style "bb_qk" text_style "bb_qk_text"
+            textbutton "菜单" action ShowMenu("navigation") style "bb_qk" text_style "bb_qk_text"
 
 
 # ---------------- 主菜单：合着的卷宗封面 ----------------
@@ -538,7 +547,7 @@ screen help():
 
         text "操　作" style "bb_label"
         use bb_key("点击 ／ 空格", "继续下一句")
-        use bb_key("Ctrl", "快进")
+        use bb_key("Ctrl（按住）", "快进——只跳读过的部分")
         use bb_key("Tab", "跳过读过的句子（再按一次取消）")
         use bb_key("Esc", "合上卷宗（菜单）")
         use bb_key("鼠标", "点座位＝跳到那个人身上")
@@ -547,7 +556,12 @@ screen help():
         # 挪焦点靠方向键。以前这里写"Tab 挪焦点"，玩家照做就开始跳过正文。
         # 已读的话在右上角快捷栏的「日志」上，这里照实写。
         use bb_key("右上角「日志」", "已读的话")
-        text "记号单独开了一页，快捷栏上的\"图例\"直接跳到那里。" style "bb_micro" xsize 1000
+        # 自动只管得着"说出来的话"那一页页往下翻：引擎的自走逻辑长在 SayBehavior 上，
+        # 扉页有 timer、搜索格与对质桌没有。开着自动却停在一张现场前，不是坏了。
+        text "「自动·开」只把正文一页页翻下去；要看的现场、要抵的证据，还得自己点。" style "bb_body_sub" xsize 1000
+        # Ctrl 和 Tab 都不越过这道开关：它关着时，没读过的正文一句也跳不过去。
+        text "设置里那一格「允许跳过」关着时，上面两条快进只翻读过的句子；打开才一路向前。" style "bb_micro" xsize 1000
+        text "记号单独开了一页，快捷栏上的「图例」直接跳到那里。" style "bb_micro" xsize 1000
 
 
 # ---------------- 图例：纸上的记号 ----------------
@@ -560,12 +574,12 @@ screen bb_legend():
         use bb_legend_row(Frame("images/ui/frame_chip_sel.png", 14, 14), "", "发言",
                           "金细边：正在说话的那一位。", False, bb_gold_dark)
         use bb_legend_row("images/ui/redaction.png", "images/ui/stamp_silence.png", "",
-                          "涂黑条＋角章：逼出的沉默。锈色只此一处。")
+                          "涂黑条＋角章：逼出的沉默。红头是卷宗的印。")
         use bb_legend_row(Frame("images/ui/frame_chip_rebut.png", 14, 14), "images/ui/stamp_rebut.png", "反问",
                           "虚线框：主人把问题推回你手上。冷蓝只此一处。", False, bb_cold_dark)
         text "纸　片" style "bb_label"
         use bb_legend_row("images/ui/clip.png", "", "",
-                          "回形针夹着的纸片：手里的证据，举起来才变色。", True)
+                          "回形针夹着的纸片：手里的证据，举起来才变金。", True)
         use bb_legend_row("images/ui/hole.png", "", "",
                           "装订孔：翻过的地点，和已经抵上过一句话的证据。", True)
         use bb_legend_row("", "", "铅笔字",
@@ -668,7 +682,9 @@ screen notify(message):
         yanchor 0.5
         padding BB_PAD_SLIP
         background BB_SLIP
-        text message style "bb_btn_text" color bb_gold_dark
+        # 提示不是卷宗里的话，是有人在本子边上写的一句提醒——那就用铅笔灰。
+        # 金在纸上只记两件事：正在说话的那一位、你手里举起来的那一条。
+        text message style "bb_btn_text" color bb_pencil
 
 
 screen skip_indicator():
@@ -702,9 +718,13 @@ screen bb_card(chapter, title, sub, day="", snap=None):
         background "#00000000"
         action Return()
 
-    $ num = chapter[-2] if chapter.endswith("章") and len(chapter) >= 2 else ""
+    # 水印取的是"第X章"里那个 X，不是倒数第二个字：第十一章原来只剩一个"一"，
+    # 和第一章撞，第二十章又撞第十章。字号按字数除，让整块宽度恒定在 460，
+    # 三字的水印不会顶出右边。
+    $ num = "序" if chapter == "序章" else (chapter[1:-1] if chapter.startswith("第") and chapter.endswith("章") else "")
+    $ num_size = 460 // max(1, len(num))
 
-    text num xalign 0.80 xanchor 0.5 yalign 0.46 yanchor 0.5 size 460 color "#0b0d1012" font bb_serif_b
+    text num xalign 0.80 xanchor 0.5 yalign 0.46 yanchor 0.5 size num_size color "#0b0d1012" font bb_serif_b
 
     vbox:
         xalign 0.06
@@ -956,7 +976,13 @@ screen bb_debate(d):
             sensitive (d.selected is not None)
         textbutton "下一句" action Return(("next", None)) style "bb_btn" text_style "bb_btn_text" xfill True
         # 收轮之后这一局就按现在的停顿记账，回不去了——一次误点不能再当没发生。
-        textbutton "结束本轮" action Confirm("结束这一轮？沉默按现在的数目记账。", Return(("end", None))) style "bb_btn" text_style "bb_btn_text" xfill True
+        # 更要紧的是"听"这条路：有些证据只在听完某一句时才到手（第一夜的死亡时间
+        # 就在第三句上），句子没听过就永久拿不到，图鉴会一直挂着缺一条。
+        # 不能只问"结束这一轮？"——那等于让玩家在看不见代价的地方签字。
+        $ _unheard = len(d.statements) - len(d.heard)
+        textbutton "结束本轮" action Confirm(
+            ("还有 %d 句没有听过，听过才会有新东西到手。" % _unheard if _unheard else "这一轮的句子都听过了。")
+            + "沉默按现在的数目记账。", Return(("end", None))) style "bb_btn" text_style "bb_btn_text" xfill True
 
     if d.message:
         # 批注是这一句的判词，摆在发言页原位：读完点一下，句子还在。
@@ -1157,7 +1183,9 @@ screen bb_gallery():
         # 所以缺过的章节各占一行，齐了的不提。
         for ch, got, allc in ev_chapter_counts():
             if got < allc:
-                text ch + "　" + str(got) + " ／ " + str(allc) + " 条未齐" style "bb_micro" color bb_rust
+                # 这一行是"还差几条"的账，不是谁停下来——锈留给停顿，
+                # 这种清点用的数走铅笔灰（本子边上的批注）。
+                text ch + "　" + str(got) + " ／ " + str(allc) + " 条未齐" style "bb_micro" color bb_pencil
         if not have:
             text "还没有任何东西。" style "bb_body_sub"
         for e in ev_list():

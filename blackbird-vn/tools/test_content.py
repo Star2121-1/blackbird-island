@@ -397,6 +397,64 @@ check("运行时被改动的容器都声明成了 default（漏 %d 个）" % len
 for n in unsaveable:
     info("%s 在 init 里赋值、运行时改动内容，但没声明 default——存档带不走" % n)
 
+# ---------------- 6) 引号体例 ----------------
+# 终稿那份 markdown 用的是打字机引号，界面排成了中文弯引号（全项目 82 对）。
+# 两边混着的后果不是难看，是同一句话在项目里有好几种写法：
+# "陈是守望者之一"这一行出现过弯双、弯单、直单三种，而帮助页上「日志」和"图例"
+# 是同一个快捷栏里的两个按钮名，一个折一个直——玩家会以为它们在指两种东西。
+# 规则：玩家看得见的字符串里不许有 ASCII 直引号；『』只用错过一次，一并禁掉。
+# 「」留着，但它只指界面元素名，不掺进台词。
+CJK = re.compile(u"[一-鿿]")
+
+
+def visible_literals(line):
+    """吐出一行代码里所有双引号字符串（反转义后的内容），并摘掉行尾注释。
+    逐字符走是有必要的：`# 他写了"停"两个字` 这种注释里的引号玩家看不见，
+    而 `color "#0b0d1012"` 里的 # 在字符串里，不能当注释切。"""
+    out, buf, instr = [], [], False
+    i = 0
+    while i < len(line):
+        c = line[i]
+        if instr:
+            if c == "\\" and i + 1 < len(line):
+                buf.append(line[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                out.append("".join(buf))
+                buf, instr = [], False
+                i += 1
+                continue
+            buf.append(c)
+        elif c == '"':
+            instr = True
+        elif c == "#":
+            break
+        i += 1
+    return out
+
+
+bad_quote = []
+# 只认"贴着汉字的引号"：Ren'Py 的撇号、英文缩写里的撇号不是中文引号用错，
+# 而 `don't` 这种整串英文也不该被这条闸门咬——判据是撇号紧挨着汉字才算引号。
+QUOTE_NEXT_TO_CJK = re.compile(u"(['\"])\\s*(?=[一-鿿])|(?<=[一-鿿])\\s*(['\"])")
+for fn in sorted(os.listdir(GAME)):
+    if not fn.endswith(".rpy") or fn == "99_shots.rpy":
+        continue
+    src = io.open(os.path.join(GAME, fn), encoding="utf-8").read()
+    for i, line in enumerate(src.split("\n"), 1):
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        for lit in visible_literals(line):
+            # 只管混着中文的那些：字体名、颜色、路径里的 # 和 ' 不该被这条咬住。
+            if not CJK.search(lit):
+                continue
+            if QUOTE_NEXT_TO_CJK.search(lit) or u"『" in lit or u"』" in lit:
+                bad_quote.append((fn, i, lit))
+check("玩家可见文本没有直引号／『』（发现 %d 处）" % len(bad_quote), not bad_quote)
+for fn, i, lit in bad_quote[:12]:
+    info("%s:%d %s" % (fn, i, lit[:40]))
+
 print("")
 if fails:
     print("FAILED: %d" % len(fails))

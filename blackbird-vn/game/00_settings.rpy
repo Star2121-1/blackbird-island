@@ -239,9 +239,19 @@ style bb_ev is button:
 style bb_ev_text is bb_btn_text:
     size BB_T_LABEL
     # 证据条和发言席走的是 bb_ev／frame_chip_sel，那两处金是有账的：
-    # 图例承诺"金细边＝正在说话的那一位"、"纸片：手里的证据，举起来才变色"。
+    # 图例承诺"金细边＝正在说话的那一位"、"纸片：手里的证据，举起来才变金"。
     # 菜单侧刚被改成双细线，这里得把金要回来。
     selected_color bb_gold_dark
+
+# 右上角那排快捷芯片借过 bb_ev 的皮，于是也借走了它的金：开了设置页，"设置"
+# 芯片变金；一按"自动"，芯片也变金——可金在这份卷宗里记的是"正在说话的那一位"
+# 和"你手里举着的那条"。快捷栏既不是席位也不是证据，选中只该换形状（双细线），
+# 不该抢一个有含义的色相。
+style bb_qk is bb_ev:
+    selected_background Frame("images/ui/frame_chip_sel_ink.png", 14, 14)
+
+style bb_qk_text is bb_ev_text:
+    selected_color bb_ink
 
 style bb_bar is bar:
     left_bar bb_ink

@@ -6,8 +6,9 @@ Usage:
 
 The rule is "no rewriting, only deleting". Eyes can't hold this, so it is a script:
 collapse 黑鸟岛-终稿.md into one whitespace-free string and check every line.
-House rules checked too: no full-width exclamation marks, no arabic digits in speech,
-every chapter has a dated card.
+Deleting is allowed clause by clause, never from the middle of a clause — that half of
+the rule is `clause_cut` below. House rules checked too: no full-width exclamation
+marks, no arabic digits in speech, every chapter has a dated card.
 
 Words written for the interface are not adaptation: narrator lines (N), hotspot
 prose, the prologue (story), the coda (epilogue), the inter-day notes (dayN_pass),
@@ -123,6 +124,58 @@ def verdict(t, src):
     return 'MISS'
 
 
+# ---------------- 拆句删 ----------------
+# verdict 走的是"子序列"，于是它只保证词都在，不保证它们原来挨在一起。
+# 把一句台词从中间挖掉两个字，它照样绿——上一次批量改引号体例就这么挖坏了四句：
+# "被标注为'C'"成了"被“C”"，"第三天提交了自首书"没了谓语，读起来是病句。
+# 这条补的是同一只门的另一半：删只能按小句删。每个小句要在正文里整段连着出现，
+# 小句与小句之间隔掉的那段必须含标点（＝原来就是两个小句）。
+# 只管 verdict 认下来的行：自撰的话整句都不在正文里，不归它比。
+# 它看不见句首丢一两个字那一种（"对'陈默'这个名字"丢了"对"）——那类旁白走 N，
+# 本来就不逐字比对；真要防，得连"前一个字是不是标点"一起管，代价是误伤连接词。
+CLAUSE_PUNCT = set(u'，。、；：？！…—–（）()《》〉「』【】')
+DROP = re.compile(u'[\\s*`>"\'“”‘’\\[\\]『』]')
+
+
+def keep_punct(s):
+    return DROP.sub('', s)
+
+
+def clauses(t):
+    out, buf = [], u''
+    for c in t:
+        if c in CLAUSE_PUNCT:
+            if len(buf) >= 2:
+                out.append(buf)
+            buf = u''
+        else:
+            buf += c
+    if len(buf) >= 2:
+        out.append(buf)
+    return out
+
+
+def _chain(fr, src_k, start, pos):
+    """从 pos 起给 fr[start] 挑一个位置，往后逐个小句连着走。
+    只认第一次出现会走偏：同一句短话正文里到处有，链条要试到走通为止。"""
+    if start >= len(fr):
+        return True
+    i = src_k.find(fr[start], pos)
+    if i < 0:
+        return False
+    if start > 0 and not any(c in CLAUSE_PUNCT for c in src_k[pos:i]):
+        return False
+    return _chain(fr, src_k, start + 1, i + len(fr[start]))
+
+
+def clause_cut(text, src_k):
+    """True ＝"整句照搬或按小句删"；False ＝有小句被从中间挖过。"""
+    fr = clauses(keep_punct(text))
+    if not fr:
+        return True
+    return _chain(fr, src_k, 0, 0)
+
+
 def each_line():
     """带着当前 label 一起交出来：界面写的话不算改编正文"""
     for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
@@ -151,6 +204,7 @@ def each_statement():
 
 def main():
     src = src_text()
+    src_k = keep_punct(io.open(NOVEL, encoding='utf-8').read())
     ok = 0
     free = 0
     miss = []
@@ -158,11 +212,16 @@ def main():
     bang = []
     nums = []
     quoted = 0
+    cut = []        # 拆句删：verdict 认了出处、小句却被从中间挖过
+    stricted = 0
 
     for fn, ln, who, text in each_statement():
         total += 1
         if verdict(norm(text), src) == 'OK':
             ok += 1
+            stricted += 1
+            if not clause_cut(text, src_k):
+                cut.append('%s:%d %s %s' % (fn, ln, who, text[:48]))
         else:
             miss.append('%s:%d %s %s' % (fn, ln, who, text[:48]))
 
@@ -181,6 +240,7 @@ def main():
         note = m.group(4) or u''
         is_free = (bool(FRAME.match(lab)) or who == 'N' or u'自撰' in note)
         for piece in text.split('\n'):
+            spoken = piece
             piece = norm(piece)
             if not piece:
                 continue
@@ -188,6 +248,10 @@ def main():
             v = verdict(piece, src)
             if v == 'OK':
                 ok += 1
+                if not is_free:
+                    stricted += 1
+                    if not clause_cut(spoken, src_k):
+                        cut.append('%s:%d %s %s' % (fn, ln, who, spoken[:48]))
             elif is_free:
                 free += 1
             else:
@@ -212,6 +276,9 @@ def main():
           % (total, ok, free, len(miss)))
     for x in miss[:40]:
         print(u'  MISS ' + x)
+    print(u'拆句删（小句被从中间挖过） %d 处' % len(cut))
+    for x in cut[:20]:
+        print(u'  CUT ' + x)
     # 正则漂了的话，上面那三行会一起变 0 而脚本照样绿——和 test_content 里
     # "容器闸门真的在扫" 一个道理，抓到的量也得验。
     print(u'引号代号台词 %d 行' % quoted)
@@ -227,6 +294,8 @@ def main():
     over = []
     if quoted < 1:
         over.append(u'引号代号的台词一行都没扫到——LINE_RE 的 SPEAK 分支失效了')
+    if stricted < 400:
+        over.append(u'拆句删只比对了 %d 段——keep_punct／clauses 没吃到行，闸门在空转' % stricted)
     if free > FREE_MAX:
         over.append(u'界面自撰 %d 超额度 %d：往热点／旁白里塞的话不再逐字比对'
                     % (free, FREE_MAX))
@@ -235,7 +304,7 @@ def main():
                     % (len(nums), NUM_MAX))
     for x in over:
         print(u'  SCOPE ' + x)
-    return 1 if (miss or bang or nocard or over) else 0
+    return 1 if (miss or bang or nocard or cut or over) else 0
 
 
 if __name__ == '__main__':

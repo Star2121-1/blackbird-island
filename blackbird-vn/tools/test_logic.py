@@ -189,6 +189,47 @@ for nm, rows, bullets in ROUNDS:
     check(nm + "破绽句都配了打破后的话",
           all(s.hit for s in rows if s.weak_to and s.hit_kind))
 
+# ---------------- 旧档补齐真的会跑 ----------------
+# 对质状态是 default round1..5 这几个全局，存档时被原样 pickle。字段是后加的，
+# 而早先这里只写了 after_upgrade、没写 __setstate__——那个名字是 renpy.object.Object
+# 的钩子，普通 object 子类存档时没人会调它，整段安心代码其实一次都没执行过。
+full = Debate(SEATS, ROUND1, bullets=3)
+back = Debate.__new__(Debate)
+if hasattr(back, "__setstate__"):
+    back.__setstate__(full.__getstate__())
+else:
+    back.__dict__.update(full.__getstate__())
+check("对质对象存一轮再取，字段一个不多一个不少",
+      set(vars(back)) == set(vars(full)) and "__version__" not in vars(back))
+check("取回来的这一局和存进去的是同一本账",
+      back.max_bullets == full.max_bullets and back.silence_total == full.silence_total
+      and back.label == full.label)
+
+# 手搓一份"旧档"：把后加的字段和 __version__ 一起抹掉，再走恢复时走的同一条路。
+# 不用 pickle.dumps：这里的 Debate 是 exec 进临时命名空间的，标准 pickle 按
+# __module__ 找不回来；而引擎存档时用的正是 __getstate__／__setstate__ 这一对。
+stale = dict(full.__getstate__())
+for k in ("__version__", "max_bullets", "head", "sub", "spent", "heard", "broken",
+          "counters", "passes", "done", "message", "selected", "i", "silence",
+          "silence_total"):
+    stale.pop(k, None)
+zombie = Debate.__new__(Debate)
+if hasattr(zombie, "__setstate__"):
+    zombie.__setstate__(stale)
+else:
+    # 没有 __setstate__ 时，pickle 恢复只做这一件事——那正是旧写法踩的坑：
+    # 字段一个都补不出来，进界面读第一格就 AttributeError。
+    zombie.__dict__.update(stale)
+need = ("spent", "heard", "broken", "counters", "passes", "done", "message",
+        "selected", "i", "silence", "silence_total", "max_bullets", "head", "sub")
+lacking = [k for k in need if not hasattr(zombie, k)]
+check("旧档缺的 14 个字段被补齐（缺 %d 个）" % len(lacking), not lacking)
+check("补齐之后的沉默总数算得对", zombie.silence_total == full.silence_total)
+# 补齐之后还能真的打一局：进界面第一件事就是 seat_state()，它读 broken/done。
+zombie.i = 0
+check("补过旧档的对质能立刻算席位状态",
+      zombie.seat_state(ROUND1[0].speaker) in ("active", "idle", "broken", "countered"))
+
 print("")
 if fails:
     print("FAILED: %d" % len(fails))

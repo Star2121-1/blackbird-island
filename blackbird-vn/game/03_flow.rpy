@@ -430,7 +430,10 @@ label bb_result_card(rt):
         $ bb_trace("[AUTO] result " + rt.head + " " + str(rt.silence) + "/" + str(rt.silence_total))
     $ bb_silence_won += rt.silence
     $ bb_silence_possible += rt.silence_total
-    call screen bb_result(rt.silence, rt.silence_total, rt.result_lines(),
+    # 靠"三次用尽"收的那一轮，判词是最后一条 message——对质界面已经退出了，
+    # 那句话只能落在结算页第一格，不然玩家只看见账本翻过一页，不知道为什么翻。
+    $ _lines = ([rt.message] if rt.message else []) + rt.result_lines()
+    call screen bb_result(rt.silence, rt.silence_total, _lines,
                           head=rt.head, sub=rt.sub)
     return
 

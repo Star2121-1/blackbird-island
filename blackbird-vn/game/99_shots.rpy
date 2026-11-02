@@ -30,6 +30,13 @@ label shot_all:
     $ _shot("03_card")
     hide screen bb_card
 
+    # 水印的字数那一格：第一章只印一个"一"，看不出问题；第二十四章要印三个字，
+    # 字号按字数除以后整块宽度必须还和单字那版一样，不然顶出右边界。
+    show screen bb_card("第二十四章", "合上", "手稿到这里就没有了。", "十一月十五日", BB_SNAP("bg_dock.jpg"))
+    pause 2.4
+    $ _shot("03b_card_num")
+    hide screen bb_card
+
     show screen bb_explore("bg_dock", DOCK_SPOTS, ["invite"],
                            "码头 · 下船之前 —— 还有 1 处没有看过。看完才能走。")
     pause 2.4
@@ -120,7 +127,8 @@ label shot_all:
     # ① 带"六日总账"那一行的结算页（第一夜不显示它，17 也不显示）。
     $ bb_silence_won = 10
     $ bb_silence_possible = 20
-    show screen bb_result(4, 6, ["四处沉默。还有两句话，说完了。", "主人没有沉默。他把问题推回我手上——那一条不算赢。"],
+    show screen bb_result(4, 6, ["他说的每一句都对得上他自己那一趟。这一句没有对得上任何东西。\n\n机会用尽了，这一轮收在这里。还有 3 句没有听过。",
+                                 "四处沉默。还有两句话，说完了。", "主人没有沉默。他把问题推回我手上——那一条不算赢。"],
                           head="第三夜 · 结算", sub="逼出来的停顿")
     pause 2.4
     $ _shot("18_result_cum")
@@ -130,7 +138,8 @@ label shot_all:
     #    截的是 bb_confirm_panel（modal 的 confirm 会把 pause 卡住），底下垫真的桌子。
     show screen bb_debate(round1)
     pause 0.4
-    show screen bb_confirm_panel("结束这一轮？沉默按现在的数目记账。", Return(), Return())
+    show screen bb_confirm_panel("还有 3 句没有听过，听过才会有新东西到手。沉默按现在的数目记账。",
+                                 Return(), Return())
     pause 2.4
     $ _shot("19_confirm")
     hide screen bb_confirm_panel

@@ -200,6 +200,11 @@ init -1 python:
     class Debate(object):
         """label 是这一局摆在桌角的名目：哪一晚、第几轮。界面不自己猜。"""
 
+        # 存档里躺着的是这个对象本身（round1..5 是 default 全局），标准 pickle 只
+        # __dict__.update，后加的字段不会自己长出来。__version__ 由 __getstate__ 写进档，
+        # 旧档没这一行就按 0 算，走 after_upgrade 补齐。
+        __version__ = 1
+
         def __init__(self, seats, statements, bullets=3, label="大厅 · 第一轮",
                      head="第一轮 · 结算", sub="逼出来的停顿"):
             self.seats = seats
@@ -212,10 +217,21 @@ init -1 python:
                 1 for s in statements if s.weak_to and s.hit_kind == "silence")
             self.reset()
 
+        def __getstate__(self):
+            st = dict(vars(self))
+            st["__version__"] = self.__version__
+            return st
+
+        def __setstate__(self, state):
+            version = state.pop("__version__", 0)
+            self.__dict__.update(state)
+            self.after_upgrade(version)
+
         def after_upgrade(self, version):
-            """Ren'Py 恢复旧档是 __dict__.update 合并，不是重建对象：
-            老档里的 Debate 没有后加的字段，进对质界面读一下就是一个 AttributeError。
-            所以字段一多就补一版，别指望玩家重开。"""
+            """补旧档缺的字段，别指望玩家重开。
+            早先这里只有 after_upgrade 没有 __setstate__——那个名字是
+            renpy.object.Object 的钩子，普通 object 子类存档时没人会调它，
+            整段是看着安心、实际从不执行死代码。"""
             if version < 1:
                 for k, v in (("max_bullets", 3), ("head", "第一轮 · 结算"),
                              ("sub", "逼出来的停顿"), ("spent", set()),
@@ -295,6 +311,11 @@ init -1 python:
             self.message = s.miss or "这句话没有对得上任何东西。"
             if self.bullets <= 0:
                 self.done = True
+                # 三次用尽的这一次，屏幕上不会再有下一格：循环当场退出，判词跟着一起消失。
+                # 所以把"收在这里"和"还剩几句没听过"接在同一条尾巴上，交给结算页去说。
+                _left = len(self.statements) - len(self.heard)
+                self.message += ("\n\n机会用尽了，这一轮收在这里。"
+                                 + ("还有 %d 句没有听过。" % _left if _left else ""))
 
         def advance(self):
             """听完一句往下走；走到末尾就回到第一句，重听一轮。
