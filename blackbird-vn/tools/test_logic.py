@@ -50,23 +50,48 @@ SEATS = g["SEATS"]
 Debate = g["Debate"]
 HANGMAN = g["HANGMAN"]
 
+# ---------------- 回合参数从 03_flow 读，不在这里抄一份 ----------------
+# 反驳机会是剧本里 $ roundN = Debate(...) 那几行的实参。早先在自检里写死 3/4，
+# 剧本把 bullets 改成 5，自检照样绿——而"沉默数不得超过反驳机会"这条
+# 公平性判据守的其实是剧本里那个数。所以解析出来用。
+FLOW = os.path.join(HERE, "game", "03_flow.rpy")
+flow_src = io.open(FLOW, encoding="utf-8").read()
+# 不写 bullets= 时用的是 Debate 形参上的默认值，这里也照那个值判，别写死 3。
+DEF_BULLETS = Debate.__init__.__defaults__[0]
+DEBATE_CALL = re.compile(r"^\s*\$\s+(round\d)\s*=\s*Debate\(([^)]*)\)", re.M)
+round_cfg = {}
+for _name, _args in DEBATE_CALL.findall(flow_src):
+    _pos = [a.strip() for a in _args.split(",") if "=" not in a]
+    _kw = dict(re.findall(r"(\w+)=([^,]+)", _args))
+    round_cfg[_name] = {"stmts": _pos[1] if len(_pos) > 1 else None,
+                        "bullets": int(_kw["bullets"]) if "bullets" in _kw
+                        else DEF_BULLETS}
+
+check("03_flow 里五轮都建了 Debate（抓到 %d 个）" % len(round_cfg),
+      set(round_cfg) == {"round1", "round2", "round3", "round4", "round5"})
+check("03_flow 的每轮都传了一个发言表常量进去",
+      all(re.match(r"^ROUND\d$", v["stmts"] or "") for v in round_cfg.values()))
+
 check("证据表每条都有名字和正文",
       all(e.name and e.brief and e.chapter for e in EVIDENCE.values()))
 check("座位 8 个 = 7 受邀 + 沈南舟", len(SEATS) == 8 and SEATS[0] == "沈南舟")
 
-d = Debate(SEATS, ROUND1)
-check("本轮沉默上限 2", d.silence_total == 2)
-check("反驳机会 3", d.bullets == 3)
+r1_bullets = round_cfg.get("round1", {}).get("bullets") or DEF_BULLETS
+d = Debate(SEATS, ROUND1, bullets=r1_bullets)
+check("本轮沉默上限 = 发言表里的沉默句数",
+      d.silence_total == len([s for s in ROUND1
+                              if s.weak_to and s.hit_kind == "silence"]))
+check("反驳机会与 03_flow 一致（%d）" % r1_bullets, d.bullets == r1_bullets)
 
 # 1) 没举证据就反驳
 d.rebut()
-check("空手反驳不掉血", d.bullets == 3 and d.message)
+check("空手反驳不掉血", d.bullets == r1_bullets and d.message)
 
 # 2) 举错证据
 ev_give("lock")
 d.select("lock")
 d.rebut()
-check("举错证据掉一次机会", d.bullets == 2 and d.silence == 0)
+check("举错证据掉一次机会", d.bullets == r1_bullets - 1 and d.silence == 0)
 
 # 3) 听完林晚那一句才拿到死亡时间
 while d.i != 2:
@@ -80,10 +105,11 @@ check("点座位能回到未破的那一句", d.i == 1)
 d.select("time_window")
 d.rebut()
 check("王剑沉默", d.silence == 1 and d.seat_state("王剑") == "broken")
-check("打破不扣反驳机会", d.bullets == 2)
+check("打破不扣反驳机会", d.bullets == r1_bullets - 1)
 d.select("time_window")
 d.rebut()
-check("同一句不能重复打破，也不白扣机会", d.silence == 1 and d.bullets == 2)
+check("同一句不能重复打破，也不白扣机会",
+      d.silence == 1 and d.bullets == r1_bullets - 1)
 
 # 5) 方廷
 while d.i != 3:
@@ -139,8 +165,11 @@ def load_init(fname):
 for f in ("13_rounds_ab.rpy", "14_rounds_cd.rpy"):
     load_init(f)
 
-ROUNDS = [("第二轮", g["ROUND2"], 4), ("第三轮", g["ROUND3"], 4),
-          ("第四轮", g["ROUND4"], 4), ("第五轮", g["ROUND5"], 4)]
+# 后四夜的发言表要等 13/14 两个文件 exec 进来才存在，所以这张表排在这儿。
+# bullets 一律取自 03_flow 那几行实参（见上面 round_cfg），不在这儿重写数字。
+ROUNDS = [(nm, g[round_cfg[key]["stmts"]], round_cfg[key]["bullets"])
+          for key, nm in (("round2", "第二轮"), ("round3", "第三轮"),
+                          ("round4", "第四轮"), ("round5", "第五轮"))]
 
 for nm, rows, bullets in ROUNDS:
     ref = set()

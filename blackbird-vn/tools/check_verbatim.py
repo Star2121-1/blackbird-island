@@ -11,7 +11,9 @@ every chapter has a dated card.
 
 Words written for the interface are not adaptation: narrator lines (N), hotspot
 prose, the prologue (story), the coda (epilogue), the inter-day notes (dayN_pass),
-and any line carrying a trailing `# 自撰` marker.
+and any line carrying a trailing `# 自撰` marker (supported, currently unused).
+Lines inside those frames are not compared word by word, so FREE_MAX caps how many
+of them can lack a manuscript source — a ceiling, not a rubber stamp.
 """
 import ast
 import glob
@@ -24,7 +26,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NOVEL = os.path.join(os.path.dirname(ROOT), u'黑鸟岛-终稿.md')
 GAME = os.path.join(ROOT, 'game')
 
-SPEAK = r'[A-Z]{1,4}'
+# 说话人两种写法都要吃到：名单上的角色用变量（ME/SU/…），名单外的用引号当代号
+# （"船老大" "到了。"）。早先只认 [A-Z]{1,4}，那一条整句没进过这道门——
+# 引号里再写一段编的话，脚本一声不吭。
+SPEAK = r'(?:[A-Z]{1,4}|"(?:[^"\\]|\\.)*")'
 LINE_RE = re.compile(r'^(\s*)(' + SPEAK + r')\s+"((?:[^"\\]|\\.)*)"\s*(#.*)?$')
 
 # 圆桌发言和对白同级：Statement("谁", "话", ...) 的第二参要逐字可溯
@@ -35,6 +40,13 @@ KEEP = re.compile(u'[^一-鿿，。、；：？！…—–（）()《》〈〉�
 SPLIT = re.compile(u'[，。、；：？！…—–（）()《》〉「』『·　-〿]')
 
 FRAME = re.compile(r'^(story|epilogue|day\d_pass|day6_end|spot_)')
+
+# 界面自撰的额度。FRAME 标签里和 N 旁白不进逐字比对，于是往热点里塞一句"角色说的话"
+# 也不会报警。53 是逐条核过的现存上限：加了新数，就得回来看一眼是不是把台词写成自撰了。
+FREE_MAX = 53
+# 台词里的阿拉伯数字只许出现在"抄来的文书"里（日期、警方的 A-001 编号、封装记录、
+# 照片背面那行红笔字）。这条原先只打印不判，等于没有闸门；数一多照样静默。
+NUM_MAX = 5
 
 
 def norm(s):
@@ -145,6 +157,7 @@ def main():
     total = 0
     bang = []
     nums = []
+    quoted = 0
 
     for fn, ln, who, text in each_statement():
         total += 1
@@ -158,6 +171,8 @@ def main():
         if not m:
             continue
         who = m.group(2)
+        if who.startswith('"'):
+            quoted += 1
         text = ast.literal_eval('"' + m.group(3) + '"')
         if u'！' in text:
             bang.append('%s:%d %s' % (fn, ln, text[:40]))
@@ -197,6 +212,9 @@ def main():
           % (total, ok, free, len(miss)))
     for x in miss[:40]:
         print(u'  MISS ' + x)
+    # 正则漂了的话，上面那三行会一起变 0 而脚本照样绿——和 test_content 里
+    # "容器闸门真的在扫" 一个道理，抓到的量也得验。
+    print(u'引号代号台词 %d 行' % quoted)
     print(u'全角叹号 %d 处' % len(bang))
     for x in bang[:10]:
         print(u'  BANG ' + x)
@@ -206,7 +224,18 @@ def main():
     print(u'章节卡片 %d 张' % cards)
     for x in nocard:
         print(u'  CARD ' + x)
-    return 1 if (miss or bang) else 0
+    over = []
+    if quoted < 1:
+        over.append(u'引号代号的台词一行都没扫到——LINE_RE 的 SPEAK 分支失效了')
+    if free > FREE_MAX:
+        over.append(u'界面自撰 %d 超额度 %d：往热点／旁白里塞的话不再逐字比对'
+                    % (free, FREE_MAX))
+    if len(nums) > NUM_MAX:
+        over.append(u'阿拉伯数字 %d 超额度 %d：只有抄来的文书（日期、编号）许用'
+                    % (len(nums), NUM_MAX))
+    for x in over:
+        print(u'  SCOPE ' + x)
+    return 1 if (miss or bang or nocard or over) else 0
 
 
 if __name__ == '__main__':

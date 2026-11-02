@@ -293,6 +293,13 @@ define BB = Character("黑鸟", who_color=bb_ink, what_color=bb_ink, what_font=b
 # 文字把耳朵叫起来了，画面却是干的。环境音压得很低（峰值 -14dBFS，音乐槽默认
 # 0.5），它要在意识下面走，一抬就变成风光片。
 #
+# 这两只"响过没有"的记忆必须是 default，不能在 init python 里赋值。
+# init 里造出来的对象，Ren'Py 存档时按"还是 init 那个对象"处理，不当内容写进档——
+# 于是 BB_AMB_NOW["file"] 记到哪儿，档里也永远是 None。读档回调拿不到那一首，
+# 环境音就只能等下一章的扉页再钉回来，而章节卡不会重画：读档后这一章是静音的。
+default BB_AMB_NOW = {"file": None}
+default BB_PAGE_NOW = {"key": None}
+
 # 素材一条录音都没有，全由 tools/build_audio.py 合成：网上找的"海浪"十有八九
 # 是纪录片片头，一放就把推理压成旅游宣传片。循环做在文件里（频谱法，包络只用
 # 整数个周期），Ren'Py 的 loop 是接着重排队列，文件本身接不上的话一听就知道。
@@ -320,15 +327,18 @@ init python:
 
     # 当前那一首要自己记着，别问引擎：renpy.music.get_playing() 在淡入还没起播、
     # 或者自动播放那样一秒翻三张卡的时候会说"没在放"，于是同一首被反复排进队列，
-    # 听着就是一阵抽气。实测第一日连播了 12 次同一条 room。
-    BB_AMB_NOW = {"file": None}
+    # 听着就是一阵抽气。实测第一日连播了 12 次同一条 room。容器本身见上面的 default。
+    def bb_is_auto():
+        """问的是 store 那个标志，但要经得起"还没开局"：quit 回调会在 start 之前跑
+        ——打包器的 compile 子进程就是这么收场的，那时 default 还没落地。"""
+        return getattr(store, "bb_auto", False)
 
     def bb_amb_play(f):
         if BB_AMB_NOW["file"] == f:
             return
         BB_AMB_NOW["file"] = f
         # 自动播放的冒烟测试要能看见这条线走没走：图上看不出海浪。
-        if store.bb_auto:
+        if bb_is_auto():
             bb_trace("[AMB] " + f)
         renpy.music.play(f, channel="ambience", fadein=2.0, fadeout=1.2, loop=True)
 
@@ -345,22 +355,44 @@ init python:
         f = BB_AMB_NOW["file"]
         BB_AMB_NOW["file"] = None
         if f:
+            # 给存读回归留个凭据：这一趟是"从档里认出来的那一首"，不是后面卡片钉上的。
+            store.BB_AMB_AT_START = f
             bb_amb_play(f)
 
     config.after_load_callbacks.append(bb_amb_after_load)
+
+    def bb_amb_at_start():
+        """回主菜单会走 full_restart，而引擎在这条路上不 fadeout 任何声道
+        （main.py 只在 QuitException 和普通异常两支里停音）——海浪就这么压在封面下。
+        start_callbacks 每次重启跑一遍，正好在这儿收掉；读档时它先于 after_load 跑，
+        所以不会把上面那条重放抢掉。"""
+        if renpy.context()._main_menu:
+            renpy.music.stop(channel="ambience", fadeout=1.2)
+            BB_AMB_NOW["file"] = None
+
+    config.start_callbacks.append(bb_amb_at_start)
+
+    def bb_restore_prefs():
+        """冒烟测试改过 preferences 就得还回去，而且不能等到尾声才还——
+        中途崩了、玩家手动退出，那几项已经写进 persistent 了。挂在 quit_callbacks 上。"""
+        saved = getattr(store, "BB_PREF_SAVED", None)
+        if bb_is_auto() and saved:
+            for name, val in zip(["afm_enable", "auto_forward", "afm_time",
+                                  "text_cps", "transitions"], saved):
+                setattr(preferences, name, val)
+
+    config.quit_callbacks.append(bb_restore_prefs)
 
     def bb_sfx(name):
         renpy.sound.play("audio/sfx_" + name + ".wav", channel="sound")
 
     # 翻页声。屏体里的 $ 在重绘时会再执行一次（预测也算一次），所以按卡片去重：
     # 同一张扉页只响一次，换下一章再响。环境音那条踩过同样的坑，见 BB_AMB_NOW。
-    BB_PAGE_NOW = {"key": None}
-
     def bb_page_sound(key):
         if BB_PAGE_NOW["key"] == key:
             return
         BB_PAGE_NOW["key"] = key
-        if store.bb_auto:
+        if bb_is_auto():
             bb_trace("[PAGE] " + key)
         bb_sfx("page")
 

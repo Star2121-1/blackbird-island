@@ -18,18 +18,24 @@ init python:
                          (0, 0), Image("images/ui/veil_paper.png"),
                          (0, 0), Image("images/ui/grain.png"))
 
+    def BB_HAS(fname):
+        """问引擎，别问文件系统：os.path.exists 只认散文件，
+        一旦素材归档（.rpa）或出 Android/iOS/Web 包，全部判 False，
+        整屏静默退化成纯色占位——不报错，只是没人知道。"""
+        return renpy.loadable("images/" + fname)
+
     def BB_IMG(fname, placeholder):
-        if os.path.exists(os.path.join(config.gamedir, "images", fname)):
+        if BB_HAS(fname):
             return BB_VEILED("images/" + fname)
         return BB_VEILED(placeholder)
 
     def BB_PLAIN(fname, placeholder):
         """立绘不压纱：纸上的人要比纸上的照片亮一档。"""
-        return "images/" + fname if os.path.exists(os.path.join(config.gamedir, "images", fname)) else placeholder
+        return "images/" + fname if BB_HAS(fname) else placeholder
 
     def BB_SNAP(fname):
         """章节卡上钉的那张翻拍——不压纱的原图。缺图就不钉，卡片照样成版式。"""
-        return "images/" + fname if os.path.exists(os.path.join(config.gamedir, "images", fname)) else None
+        return "images/" + fname if BB_HAS(fname) else None
 
     def BB_BG(hexcolor, label):
         return Composite((W, H),

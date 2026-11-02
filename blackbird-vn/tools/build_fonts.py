@@ -80,43 +80,59 @@ def name_record(path, name_id):
 def sync_licenses():
     """OFL 要求授权文本跟着字体走。子集是裁出来的，字体本体不进版本库，
     所以授权文本要落在 game/fonts/ 里和子集并排：版权声明取自源字体 name 表，
-    许可证正文取自随仓库带的 OFL-1.1.txt（逐字，不改写）。"""
-    body_path = os.path.join(OUT_DIR, "OFL-1.1.txt")
-    if not os.path.exists(body_path):
-        print("SKIP licenses (missing", body_path, ")")
-        return
-    with open(body_path, encoding="utf-8") as f:
+    许可证正文取自随仓库带的 OFL-1.1.txt（逐字，不改写）。
+
+    返回没落齐的那些输出名。原先缺原件只打印一行 SKIP 就往下走，
+    退出码照旧是 0——发出去的包里没有授权文本也没人报警。"""
+    lic_dir_body = os.path.join(OUT_DIR, "OFL-1.1.txt")
+    if not os.path.exists(lic_dir_body):
+        print("SKIP licenses (missing", lic_dir_body, ")")
+        return [out for _src, out, _w in JOBS
+                if os.path.exists(os.path.join(OUT_DIR, out))]
+
+    with open(lic_dir_body, encoding="utf-8") as f:
         body = f.read().strip()
+    bad = []
     for src_name, out_name, _weight in JOBS:
         src = os.path.join(SRC_DIR, src_name)
         if not os.path.exists(src):
+            # 源字体没了：这算上面那笔 SKIP 的账，不在这里重复报。
             continue
         copyright_ = name_record(src, 1) or src_name
         # 一个源裁出两个字面（常规／粗体）时，两边各自配一份：
         # LICENSE-<字体名>.txt 和字体并排，看包的人不用再去想它对应哪一个。
         dst = os.path.join(OUT_DIR, "LICENSE-" + os.path.splitext(out_name)[0] + ".txt")
+        if not os.path.exists(os.path.join(OUT_DIR, out_name)):
+            continue          # 子集本身没裁出来，归 skipped 那笔账
         with open(dst, "w", encoding="utf-8", newline="\n") as f:
             f.write(copyright_ + "\n\n"
                     "本字体是上列原字体的子集（按本作字表裁剪），授权不变：\n"
                     "This Font Software is licensed under the SIL Open Font License, "
                     "Version 1.1. The license is copied below.\n\n" + body + "\n")
         print("LIC ", os.path.basename(dst), os.path.getsize(dst), "bytes")
+        if not os.path.exists(dst):
+            bad.append(os.path.basename(dst))
+    return bad
 
 
 def main():
-    sync_licenses()
+    lic_bad = sync_licenses()
     text = glyph_text()
     print("glyphs:", len(text))
     if not os.path.isdir(OUT_DIR):
         os.makedirs(OUT_DIR)
+    if not os.path.isdir(SRC_DIR):
+        os.makedirs(SRC_DIR)
     tmp = os.path.join(SRC_DIR, "glyphs.txt")
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(text)
 
+    skipped = []
     for src_name, out_name, weight in JOBS:
         src = os.path.join(SRC_DIR, src_name)
         if not os.path.exists(src):
             print("SKIP (missing source)", src_name)
+            skipped.append(out_name)
             continue
         if weight is not None:
             staged = os.path.join(SRC_DIR, "inst_" + out_name)
@@ -134,6 +150,20 @@ def main():
             "--no-hinting",
         ])
         print("OK  ", out_name, round(os.path.getsize(dst) / 1048576.0, 2), "MB")
+
+    # 原先这里 return None，于是 fonts_src/ 空着跑一遍也报成功，
+    # 而 game/fonts/ 里躺着的还是上一轮的字表——新台词照旧渲染成空白，
+    # 只有 check_fonts 能看出来，而那一步没人保证会跑。
+    if skipped:
+        print("FAIL 缺源字体，这几份子集没重裁：%s" % " ".join(skipped))
+        print("     fonts_src/ 不进版本库，要从 OFL 发布页取原件放进来：")
+        print("     NotoSansCJKsc-Regular.otf / NotoSansCJKsc-Bold.otf /")
+        print("     NotoSerifSC-wght.ttf / MaShanZheng-Regular.ttf")
+        return 1
+    if lic_bad:
+        print("FAIL 授权文本没落齐：%s" % " ".join(lic_bad))
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

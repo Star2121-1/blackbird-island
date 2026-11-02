@@ -13,6 +13,8 @@ label main_menu_screen:
 # 冒烟测试开关：BB_AUTOPLAY=1 时，界面一律自己收掉，正文从头跑到尾。
 # 为的是让第二十章里的一句错别字级运行时错误也能被抓出来，而不是只截第一屏。
 default bb_auto = False
+default BB_PREF_SAVED = []
+default BB_AMB_AT_START = None
 
 init python:
     def bb_trace(msg):
@@ -23,15 +25,23 @@ init python:
 
 
 label start:
-    if os.environ.get("BB_LOAD"):
+    # 冒烟测试的几只环境变量只认开发脚本在场的时候：99_shots 不打进发行包，
+    # 玩家机器上万一有 BB_SHOT／BB_LOAD，跳的 label 和读的档都不存在，一开局就抛错。
+    $ bb_dev = renpy.has_label("shot_all")
+    if bb_dev and os.environ.get("BB_LOAD"):
         # 存读回归的第二趟：读回上一趟在尾声存的那档，从这里就不再往下走了，
         # 上下文直接跳到存盘点之后（尾声），由那里打一行"读回"再收工。
         $ renpy.load("regress")
     $ have.clear()
-    $ bb_auto = bool(os.environ.get("BB_AUTOPLAY"))
+    $ bb_auto = bb_dev and bool(os.environ.get("BB_AUTOPLAY"))
     if bb_auto:
         # 界面会自己收掉，台词也得自己翻页，不然第一句就停住等点击。
         # afm_enable 是"允许自动模式"总闸，只开 auto_forward 的话它不认。
+        # 这几项存在 persistent 里，跑完不还原的话，下次正常开档就是"无过渡+自动前进"，
+        # 而且取消环境变量也回不来——实测过，saves/persistent 里躺着 transitions=False。
+        $ BB_PREF_SAVED = [preferences.afm_enable, preferences.auto_forward,
+                           preferences.afm_time, preferences.text_cps,
+                           preferences.transitions]
         $ preferences.afm_enable = True
         $ preferences.auto_forward = True
         $ preferences.afm_time = 0.01
@@ -46,7 +56,7 @@ label start:
     $ round3 = Debate(SEATS, ROUND3, bullets=4, label="大厅 · 第三轮", head="第三夜 · 结算")
     $ round4 = Debate(SEATS, ROUND4, bullets=4, label="大厅 · 第四轮", head="第四夜 · 结算")
     $ round5 = Debate(SEATS, ROUND5, bullets=4, label="东翼门外 · 第五轮", head="第五夜 · 结算")
-    if os.environ.get("BB_SHOT"):
+    if bb_dev and os.environ.get("BB_SHOT"):
         jump shot_all
     jump story
 
@@ -60,6 +70,9 @@ label story:
     GU "手稿的每一页，我都编了号。笔记里引用手稿原文的地方，我都标了页码。"
     GU "今天我要读的那几页，是第一日。"
     N "《黑岛证词》。作者自称陈默。"
+    # 尾章有一句"封皮上缺掉的“鸟”字"，玩家要在那儿认得它，得先在这儿看见过。
+    N "封皮上写的是“黑岛证词”。比“黑鸟岛证词”，少一个字。我找过那个“鸟”字，没有找到。"
+    N "它是什么时候没有的，我不知道。也许从来就没有写。"
     GU "读之前，我把规矩说清楚——"
     GU "这本书不许你指认谁。你要做的，是看能不能让说话的人停下来。"
     call screen bb_card("序章", "翻开", "二〇二五年 · 杭州 · 顾言笙的调查笔记", "二〇二五年十一月", BB_SNAP("bg_hangzhou.jpg"))
@@ -204,6 +217,10 @@ label spot_diary:
     SU "……你在看什么？"
     N "我把那一页翻过去。末尾只有四个字，用的是现在时："
     N "陈默——他在说谎。"
+    # 尾章的"停"里点过"那册倒填年份的日记"。这一格热点只给了封面日期和现在时，
+    # 判定那一步没露过面，玩家到尾声才知道有一册日记的年份是填回去的。
+    N "纸是旧的，墨是新的。我把那一页对着光看——那四个字的墨色，没有褪过。"
+    N "这页笔记不是二〇〇九年写的。是这一次聚会之前，有人照着今天的样子，把年份倒填了回去。"
     $ ev_give("diary_fang")
     $ ev_give("diary_me")
     return
@@ -237,8 +254,9 @@ label hangman_8:
     $ picked = []
     $ msg = ""
     $ giving_up = False
+    $ hz_fails = 0
     while not giving_up:
-        call screen bb_hangman(HANGMAN, picked, msg)
+        call screen bb_hangman(HANGMAN, picked, msg, hz_fails)
         if _return[0] == "giveup":
             $ giving_up = True
         else:
@@ -246,6 +264,7 @@ label hangman_8:
             if len(picked) >= HANGMAN["need"]:
                 $ msg = HANGMAN["fail"]
                 $ picked = []
+                $ hz_fails += 1
     $ ev_give("erased8_note")
     N "第八个名字，被墨擦掉了。"
     N "擦的顺序，自下而上。那不是污渍，是一个书写动作。"
@@ -269,8 +288,44 @@ label ch6:
     SU "你确定？"
     ME "我不确定。"
     N "所有人说完之后，游戏才开始。规则是：举起一条证据，抵在一句话上。"
+    # 规则全文在帮助屏里，可帮助屏只挂在 Esc 菜单上，第一次对质之前没人会去点。
+    # 不弹窗、不打断——一条便签，看得见就走。
+    $ renpy.notify("怎么举、怎么用方向键选：菜单里的「怎么读这份卷宗」。")
     call bb_debate_run(round1)
     call bb_result_card(round1)
+    # 手稿在第一日夜里还有"下一个环节"：第二组照片。省略它，第十三章那句
+    # "边角磨得起了毛——比别处那张，更旧"就没有可比的另一张，
+    # 而证据栏里"和照片上那人蹲着的袖口一样"讲的近拍也是这一组给的。
+    show spr_shen as talker at bb_talk_r
+    SHEN "好。下一个环节。"
+    N "他站起身，走到墙边，从一幅挂画后面取下一个小盒子。盒子里是一叠照片——比我们在书房看到的那批更旧。"
+    SHEN "这是第二组。来自另一个角度。"
+    N "他把照片一张一张摊在中央的矮木几上。第一张是临东海大桥的远景。第二张是桥下的礁石。第三张是桥东侧匝道下方的避险车道。"
+    N "车道尽头，草丛里有一个蹲着的人。"
+    N "和我们在书房看到的那张照片，是同一个人。但角度不同——这张更近，能看清连帽衫的拉链，和袖口处一个小小的绣标。"
+    show spr_su as talker at bb_talk_r
+    SU "你们看到那个绣标了吗？"
+    show spr_me as talker at bb_talk_r
+    ME "没看清。"
+    show spr_su as talker at bb_talk_r
+    SU "我拍下来了。"
+    N "沈南舟没有回应。他把最后一张照片放在桌上。"
+    N "这张照片上，是一个人的正脸。年轻，大约二十岁，短发，眼睛很亮。他站在一栋建筑前，手里拿着一本打开的书，像刚参加完某场毕业典礼。"
+    N "照片背面用红笔写着：陈默，2009年，临海市。"
+    show spr_lin as talker at bb_talk_r
+    LIN "这是你儿子？"
+    N "沈南舟没有回答。她把同一句又问了一遍，声音比第一次大。"
+    show spr_lin as talker at bb_talk_r
+    LIN "这是你儿子？"
+    show spr_shen as talker at bb_talk_r
+    SHEN "我不知道你们想知道什么。我只知道，你们需要看到这张照片。"
+    show spr_zhou as talker at bb_talk_r
+    ZHOU "为什么不直接告诉我们名字？沈南舟，你儿子的名字——陈默？"
+    show spr_shen as talker at bb_talk_r
+    SHEN "陈先生，您觉得，他应该叫什么？"
+    N "我坐在沙发上，没有回答。那张照片上的脸，和我不一样。我知道不一样。"
+    N "我不认识这张脸。但我不该不认识。"
+    N "我的手开始抖。我不知道为什么。"
     jump day1_pass
 
 
@@ -366,6 +421,11 @@ label epilogue:
         # 存读回归的第二趟：档已经在 start 里读回来了，这里的 have／沉默数是档里的数。
         if os.environ.get("BB_LOAD"):
             $ bb_trace("[LOAD] 读回 证据 " + str(len(have)) + " 沉默 " + str(bb_silence_won))
+            # 环境音也得跟着档回来：这一行没有 [AMB]，说明读档后这一章是静音的。
+            if BB_AMB_AT_START:
+                $ bb_trace("[AMB-LOAD] ok " + BB_AMB_AT_START)
+            else:
+                $ bb_trace("[AMB-LOAD] FAIL 读档后没有认出该放哪一条")
             $ renpy.quit()
         # 第一趟：整本跑完的最后一刻真的存一次，供第二趟读回来。
         # 读档要过的 after_load 回调（环境音那条得重置）、档里的五个 Debate 对象，

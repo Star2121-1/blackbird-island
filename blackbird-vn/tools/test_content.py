@@ -86,11 +86,18 @@ ROUNDS = [("第一夜", g["ROUND1"]), ("第二夜", g["ROUND2"]), ("第三夜", 
 sites = {}
 spot_days = {}   # spot_<id> 定义在哪一天
 cur_label = None
+# 正文文件必须在 FILE_DAY 里登记过。早先漏登记只当第 0 天，于是新增一天
+# （比如第七日）时，那条 ev_give 会被算成"最早到手"，而它其实排在破绽句之后——
+# 一个能骗过"证据当夜之前可拿到"的洞。
+unregistered = set()
 
 for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
     fname = os.path.basename(p)
     if fname.startswith(("00_", "02_", "04_", "99_")):
         continue          # 样式／界面／图像注册／截图自检：不取证
+    src_txt = io.open(p, encoding="utf-8").read()
+    if fname not in FILE_DAY and (GIVE.search(src_txt) or HDR.search(src_txt)):
+        unregistered.add(fname)
     day = FILE_DAY.get(fname, 0)
     with io.open(p, encoding="utf-8") as f:
         for line in f:
@@ -124,6 +131,11 @@ for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
 
 # ---------------- 3) 断言 ----------------
 check("证据表非空（%d 条）" % len(EVIDENCE), len(EVIDENCE) >= 30)
+
+check("正文文件都在 FILE_DAY 登记了日序（漏 %d 个）" % len(unregistered),
+      not unregistered)
+for n in sorted(unregistered):
+    info("%s 里有取证点/分节日，但没登记日序——它会被当成第 0 天" % n)
 
 orphan = sorted(set(EVIDENCE) - set(sites))
 check("每一条证据都有拿得到的地方，无孤儿（缺 %d 条）" % len(orphan), not orphan)
@@ -163,15 +175,38 @@ if missing:
 
 total = sum(len([s for s in rows if s.weak_to and s.hit_kind == "silence"])
             for _, rows in ROUNDS)
-info("五轮合计：%s 句 / 破绽 %s 处" % (
+weak_total = sum(len([s for s in rows if s.weak_to]) for _, rows in ROUNDS)
+info("五轮合计：%s 句 / 破绽 %s 处（其中沉默 %s 处，剩下的是翻页与反问）" % (
     "、".join(str(len(r)) for _, r in ROUNDS),
-    "、".join(str(len([s for s in r if s.weak_to and s.hit_kind == "silence"]))
-              for _, r in ROUNDS)))
-check("全六日沉默总数 %d 处（>0 且每夜至少 2 处）" % total,
-      total > 0 and all(len([s for s in r if s.weak_to and s.hit_kind == "silence"]) >= 2
-                        for _, r in ROUNDS))
+    weak_total, total))
+info("每轮沉默：%s" % "、".join(
+    str(len([s for s in r if s.weak_to and s.hit_kind == "silence"])) for _, r in ROUNDS))
+check("全六日沉默总数 %d 处（文档与截图按这个数写死，动了要一起改）" % total,
+      total == 11 and all(len([s for s in r if s.weak_to and s.hit_kind == "silence"]) >= 2
+                          for _, r in ROUNDS))
 check("每条破绽句的 hit／miss 文案齐（由 test_logic 细验，这里只查总数）",
       all(s.hit and s.miss for _, rows in ROUNDS for s in rows if s.weak_to))
+
+# 三类破绽在文案上必须分得开：沉默＝有人停下来；翻页＝没人停，卷宗多翻开一页；
+# 反问＝主人不停，把问题推回来。混了，玩家就分不出自己赢没赢。
+REVEAL_TAIL = "这不是谁停下来。是卷宗里多翻开的一页。"
+STOP_WORDS = ("没有再说", "没有再往下说", "没有再讲", "没有说话", "没有再动",
+              "停了停", "停了一下", "静了很久", "收了回去")
+bad_reveal = [s.speaker for _, rows in ROUNDS for s in rows
+              if s.weak_to and s.hit_kind == "reveal"
+              and not (s.hit or "").endswith(REVEAL_TAIL)]
+bad_silence = ["%s：%s" % (s.speaker, s.text[:12])
+               for _, rows in ROUNDS for s in rows
+               if s.weak_to and s.hit_kind == "silence"
+               and not any(w in (s.hit or "") for w in STOP_WORDS)]
+bad_counter = [s.speaker for _, rows in ROUNDS for s in rows
+               if s.weak_to and s.hit_kind == "counter"
+               and REVEAL_TAIL in (s.hit or "")]
+check("翻页句都以那句收尾（漏 %d 句）" % len(bad_reveal), not bad_reveal)
+check("沉默句都真的写了一个人停下（漏 %d 句）" % len(bad_silence), not bad_silence)
+if bad_silence:
+    info("没写出停下的沉默句：" + " ".join(bad_silence))
+check("反问句不写成沉默也不借用翻页收尾（违 %d 句）" % len(bad_counter), not bad_counter)
 
 
 # ---------------- 4) 两套日历 ----------------
@@ -244,16 +279,81 @@ for d in dupes:
 # 引擎把 init 造出来的对象按"还是 init 那一个"处理，不把它的内容写进档——
 # 于是全六日跑完存一档，重开游戏只读档：沉默 14 条回来了（标量是重新赋值的），
 # 证据 0 条。玩家视角就是"读档把手里的证据读没了"。
-data_src = io.open(os.path.join(GAME, "01_data.rpy"), encoding="utf-8").read()
-init_blk = re.search(r"^init -1 python:\n((?:(?:    .*)?\n)*)", data_src, re.M).group(1)
-at_init = set(re.findall(r"^    (\w+) = (?:set\(\)|\[\]|\{\})$", init_blk, re.M))
-runtime_add = set(re.findall(r"^\s+(\w+)\.(?:add|append)\(", data_src, re.M))
-declared = set(re.findall(r"^default (\w+) = ", data_src, re.M))
-unsaveable = sorted(n for n in at_init & runtime_add if n not in declared)
-check("运行时往里加东西的容器都声明成了 default（漏 %d 个）" % len(unsaveable),
+# 第二只坑是同一只：BB_AMB_NOW／BB_PAGE_NOW 在 init 里 = {}，运行时按下标写。
+# 只盯 .add／.append 抓不到它——所以三种写法都查，且扫全部 .rpy。
+# 判据：init 块里"构造期"跑的写 → 安全；其余（label 的 $、screen 的 $、
+# 运行时才叫的函数体）→ 容器必须是 default。
+# EV() 和 bb_amb_play() 都写在 init 块的 def 体里，静态上长一样，区别只在
+# "调用点在不在构造期"。所以两趟扫：先收集构造期（init 块正文那一层）叫过的名字，
+# 再据此判每一处写是构造还是运行时。
+# 99_shots 是开发脚本，不打进包，不参与存读，跳过。
+# 非空字面量也算：BB_AMB_NOW = {"file": None} 就是带内容造的，
+# 早先只认 `{}`/`[]`/`set()` 这三种空壳，正好让它从指缝里漏过去。
+CREATED = re.compile(r"^(\w+) = (?:[\[{(]|set\(\)|dict\()")
+# 等号必须紧跟下标：早先写成 `\] =` 会把屏体里的
+# `text EVIDENCE[d.selected].name style "bb_micro" color bb_gold_dark` 一路松到后面的
+# 某个等号上，读一次也当成写。
+MUT = re.compile(r"^\s+(\w+)(?:\.(?:add|append|update|clear|discard)\b|\[[^\]]+\]\s*=(?!=))")
+CALL = re.compile(r"^\s*(\w+)\s*\(")
+DEFHEAD = re.compile(r"^(?:async )?def ")
+INITHEAD = re.compile(r"^init[^\n:]*python[^\n:]*:$")
+
+
+def blocks(src):
+    """逐行给出 (原文行, 去空白, 缩进, 当时的 def 名栈, 是否在 init 块, 块正文缩进)。
+    栈里只放 def，不放 class：class 只是命名空间，它自己不改任何容器；
+    把 class 也压进去的话，类里的方法缩进比"块正文"深，栈就永远清不干净了。"""
+    init_ind, stack = None, []
+    for ln in src.split("\n"):
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        ind = len(ln) - len(ln.lstrip())
+        if ind == 0:
+            init_ind, stack = None, []
+            if INITHEAD.match(s):
+                init_ind = -1
+        elif init_ind is not None and init_ind < 0:
+            init_ind = ind
+        while stack and ind <= stack[-1][0]:
+            stack.pop()
+        if init_ind is not None and DEFHEAD.match(s):
+            stack.append((ind, re.sub(DEFHEAD, "", s).split("(")[0]))
+        yield ln, s, ind, [n for _, n in stack], init_ind is not None, init_ind
+
+
+at_runtime, created, declared = set(), set(), set()
+for fn in sorted(os.listdir(GAME)):
+    if not fn.endswith(".rpy") or fn == "99_shots.rpy":
+        continue
+    src = io.open(os.path.join(GAME, fn), encoding="utf-8").read()
+    ctor_calls = set()
+    for ln, s, ind, stack, in_init, init_ind in blocks(src):
+        # 只认"正文那一层缩进"上的整句调用：EV("invite", ...) 这种。
+        # 函数体内的调用（result_lines 里那句 bb_cn(...)）不算——它是运行时才叫的，
+        # 混进来的话会把方法误判成构造器，方法里的局部变量就逃过检查了。
+        if in_init and not stack and ind == init_ind:
+            ctor_calls |= set(CALL.findall(ln))
+    for ln, s, ind, stack, in_init, init_ind in blocks(src):
+        hit = MUT.match(ln)
+        if hit and not (in_init and set(stack) <= ctor_calls):
+            at_runtime.add(hit.group(1))
+        # 只统计"块正文那一层"造的容器：函数体里的 `L = []` 是局部变量，
+        # 跟着调用它的函数一起判就行，本身不是模块级状态。
+        if in_init and not stack:
+            c = CREATED.match(s)
+            if c:
+                created.add(c.group(1))
+    declared |= set(re.findall(r"^default (\w+) = ", src, re.M))
+# 正则一漂，这条闸门就会静默变绿。init 直接构造的容器至少有 EVIDENCE／SEAT_POS，
+# 一个都没抓到就说明匹配本身失效了，直接报错而不是放行。
+check("容器闸门真的在扫（init 造出的容器抓到 %d 个）" % len(created),
+      {"EVIDENCE", "SEAT_POS"} <= created)
+unsaveable = sorted(n for n in at_runtime & (created - declared) if n not in declared)
+check("运行时被改动的容器都声明成了 default（漏 %d 个）" % len(unsaveable),
       not unsaveable)
 for n in unsaveable:
-    info("%s 在 init 里赋值、运行时 add／append，但没声明 default——存档带不走" % n)
+    info("%s 在 init 里赋值、运行时改动内容，但没声明 default——存档带不走" % n)
 
 print("")
 if fails:

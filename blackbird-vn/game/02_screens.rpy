@@ -449,8 +449,6 @@ screen preferences():
         text "阅　读" style "bb_label"
         use bb_pref_bar("文字速度", Preference("text speed"))
         use bb_pref_bar("自动前进", Preference("auto-forward time"))
-        use bb_pref_bar("字号", Preference("font size"))
-        use bb_pref_bar("行距", Preference("font line spacing"))
         use bb_pref_toggle("允许跳过", Preference("skip", "toggle"))
 
         text "演　出" style "bb_label"
@@ -471,8 +469,9 @@ screen preferences():
         use bb_pref_toggle("朗读文本", Preference("self voicing", "toggle"))
         text "对质：先用方向键选中证据，回车举起，再选“反　驳”。" style "bb_micro" xsize 1000
 
-        text "界面按 1920×1080 设计，所有元素留在 5% 安全区内；" style "bb_micro" xsize 1000
-        text "窗口缩放由 Ren'Py 整体等比处理，不需要额外的边距滑杆。" style "bb_micro" xsize 1000
+        text "界面按 1920×1080 设计，所有元素留在 5% 安全区内；窗口缩放由 Ren'Py 整体等比处理。" style "bb_micro" xsize 1000
+        text "这里没有字号和行距滑杆：全站是像素定宽的版面，字一放大图例、证据轨、对白页就会被裁切。" style "bb_micro" xsize 1000
+        text "要看清小字请把窗口拉大或用系统缩放——整屏等比放大不会碰坏任何一处对齐。" style "bb_micro" xsize 1000
 
 
 screen bb_pref_bar(label, val):
@@ -680,9 +679,12 @@ screen skip_indicator():
 # ---------------- 章节卡：卷宗的扉页 ----------------
 screen bb_card(chapter, title, sub, day="", snap=None):
     zorder 100
-    $ store.bb_day = day if day else store.bb_day
+    # 预测期两行都会照跑：这一屏可能被预测到、却根本没走到。
+    # 声音那两条自己按卡片去重，落不到头上；日期不行——写脏了导航屏就报一个没去过的日子。
     $ bb_amb_for(snap)
     $ bb_page_sound(chapter + title)
+    if not renpy.predicting():
+        $ store.bb_day = day if day else store.bb_day
     if store.bb_auto:
         # 扉页是天然的进度标记：卡在这里，就是这一章的界面没被自动收掉。
         $ bb_trace("[AUTO] " + chapter + "·" + title)
@@ -852,6 +854,9 @@ screen bb_debate(d):
             ysize 540
             mousewheel True
             draggable True
+            # 证据轨按入手序排，最新的一条在底下。不滚到底，玩家第四夜手里二十多条时
+            # 看不见刚拿到手的那条——而破绽只吃当晚手上的证据。
+            yinitial 1.0
             has vbox
             spacing 6
             for i, e in enumerate(ev_list()):
@@ -1019,7 +1024,7 @@ screen bb_seat(d, name, stt, p):
 
 
 # ---------------- 拼字：名单上被擦掉的一格 ----------------
-screen bb_hangman(hz, picked, msg):
+screen bb_hangman(hz, picked, msg, fails=0):
     zorder 60
     if store.bb_auto:
         # 填满一次答案位，让"我没有看清"那条失败文案走一遍。
@@ -1074,7 +1079,9 @@ screen bb_hangman(hz, picked, msg):
             padding BB_PAD_SLIP
             background BB_SLIP
             text msg style "bb_note" xsize 1180
-    textbutton "不拼了" xalign 0.5 yalign 0.95 yanchor 1.0 action Return(("giveup", None)) style "bb_btn" text_style "bb_btn_text"
+    # 这一局是设计成拼不出的（手稿里就是"我没有看清"）。玩家连错两次还以为是自己
+    # 组合不对，会一直试下去。第二次失败之后把实话写进那颗按钮。
+    textbutton ("不拼了——我没有看清" if fails >= 2 else "不拼了") xalign 0.5 yalign 0.95 yanchor 1.0 action Return(("giveup", None)) style "bb_btn" text_style "bb_btn_text"
 
 
 # ---------------- 结算 ----------------
@@ -1134,6 +1141,11 @@ screen bb_gallery():
     tag menu
     use game_menu("证据", scroll="viewport"):
         text "手稿里出现过的东西，一件一件夹在这里。" style "bb_micro"
+        # 只列已收的，玩家永远不知道"漏在哪一章"——收卷那句 8／33 就成了无解的数。
+        # 所以缺过的章节各占一行，齐了的不提。
+        for ch, got, allc in ev_chapter_counts():
+            if got < allc:
+                text ch + "　" + str(got) + " ／ " + str(allc) + " 条未齐" style "bb_micro" color bb_rust
         if not have:
             text "还没有任何东西。" style "bb_body_sub"
         for e in ev_list():

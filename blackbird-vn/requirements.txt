@@ -1,0 +1,14 @@
+# tools/ 里那几个脚本的依赖。游戏本体不需要装任何东西——
+# Ren'Py SDK 自带 Python，跑起来只认 game/ 里的 .rpy。
+#
+# 装法：pip install -r blackbird-vn/requirements.txt
+#
+# 只有 check_content / check_verbatim / test_logic / test_content / audit_dist
+# 是纯标准库的，装了下面这些才能跑的是：
+#   build_fonts.py / check_fonts.py    —— 裁字体子集、查覆盖率
+#   build_assets.py / build_icon.py    —— 抠立绘、出图标
+#   build_audio.py / build_ui_assets.py—— 合成环境音与 UI 素材
+fonttools==4.60.1
+numpy==2.3.5
+scipy==1.16.3
+Pillow==12.3.0

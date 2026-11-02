@@ -93,6 +93,12 @@ init -1 python:
     EV("envelope", "一只信封",
        "照片和封装记录并折进去。沈南舟说：这个，留给该留的人。他没有递给谁。", "第二十三章")
 
+    EV_ORDER = list(EVIDENCE)
+    BB_CH_ORDER = []
+    for _e in EVIDENCE.values():
+        if _e.chapter not in BB_CH_ORDER:
+            BB_CH_ORDER.append(_e.chapter)
+
     BB_CN = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
 
     def bb_cn(n):
@@ -110,7 +116,21 @@ init -1 python:
             renpy.notify("获得证据：" + EVIDENCE[eid].name)
 
     def ev_list():
-        return [EVIDENCE[e] for e in sorted(have, key=lambda x: list(EVIDENCE).index(x))]
+        # EV_ORDER 在 init 里算一次。原先每排一个元素就 list(EVIDENCE).index(x) 一遍，
+        # 33 条是 O(n²)，而它在对质屏和图鉴屏上每帧都调。
+        return [EVIDENCE[e] for e in EV_ORDER if e in have]
+
+    # 图鉴按章节报"缺几条"，章节顺序就是证据表的出现顺序。
+    BB_CH_ORDER = []
+
+    def ev_chapter_counts():
+        """返回 [(章节, 已收, 总数)]，只含真的有证据的章节。"""
+        out = []
+        for ch in BB_CH_ORDER:
+            ids = [k for k, v in EVIDENCE.items() if v.chapter == ch]
+            if ids:
+                out.append((ch, sum(1 for k in ids if k in have), len(ids)))
+        return out
 
     # ---------------- 圆桌发言 ----------------
     class Statement(object):
@@ -186,6 +206,23 @@ init -1 python:
             self.silence_total = sum(
                 1 for s in statements if s.weak_to and s.hit_kind == "silence")
             self.reset()
+
+        def after_upgrade(self, version):
+            """Ren'Py 恢复旧档是 __dict__.update 合并，不是重建对象：
+            老档里的 Debate 没有后加的字段，进对质界面读一下就是一个 AttributeError。
+            所以字段一多就补一版，别指望玩家重开。"""
+            if version < 1:
+                for k, v in (("max_bullets", 3), ("head", "第一轮 · 结算"),
+                             ("sub", "逼出来的停顿"), ("spent", set()),
+                             ("heard", set()), ("broken", {}), ("counters", 0),
+                             ("passes", 0), ("done", False), ("message", ""),
+                             ("selected", None), ("i", 0), ("silence", 0)):
+                    if not hasattr(self, k):
+                        setattr(self, k, v)
+                if not hasattr(self, "silence_total"):
+                    self.silence_total = sum(
+                        1 for s in self.statements
+                        if s.weak_to and s.hit_kind == "silence")
 
         def reset(self):
             self.i = 0

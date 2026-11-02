@@ -45,8 +45,24 @@ def cmap_of(path):
 def main():
     text = corpus()
     bad = 0
-    for fn in sorted(os.listdir(FONTS)):
-        if not fn.lower().endswith((".ttf", ".otf")):
+    # 只 listdir 的话，fonts/ 空掉（新克隆、或 build_fonts 全 SKIP）就一个也不比对，
+    # 满屏 ok 直接绿。所以要比对的文件名取自 build_fonts 的 JOBS——和裁字的是同一张表。
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from build_fonts import JOBS
+    want = [out for _src, out, _w in JOBS]
+    have_files = {fn for fn in os.listdir(FONTS) if fn.lower().endswith((".ttf", ".otf"))} \
+        if os.path.isdir(FONTS) else set()
+    absent = [fn for fn in want if fn not in have_files]
+    for fn in absent:
+        print("MISS %s  这个字体文件不在 game/fonts/ 里" % fn)
+    # OFL 要求授权文本跟着字体走。子集在包里，授权文本不在就是不合规发行。
+    nolic = [fn for fn in want
+             if not os.path.exists(os.path.join(
+                 FONTS, "LICENSE-" + os.path.splitext(fn)[0] + ".txt"))]
+    for fn in nolic:
+        print("MISS LICENSE-%s.txt  子集并排的授权文本没了" % os.path.splitext(fn)[0])
+    for fn in sorted(want):
+        if fn in absent:
             continue
         have = cmap_of(os.path.join(FONTS, fn))
         if fn == HAND:
@@ -58,6 +74,10 @@ def main():
             print("MISS %s  %d 个字渲染不出来：%s" % (fn, len(miss), "".join(sorted(miss))))
         else:
             print("ok   %s  (%d 个字形)" % (fn, len(have)))
+    if absent or nolic:
+        print("\n缺 %d 个文件：跑 python blackbird-vn/tools/build_fonts.py"
+              "（源字体在 fonts_src/，不进版本库）" % (len(absent) + len(nolic)))
+        return 1
     if bad:
         print("\n重跑：python blackbird-vn/tools/build_fonts.py")
         return 1

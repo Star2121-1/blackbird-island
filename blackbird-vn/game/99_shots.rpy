@@ -105,9 +105,13 @@ label shot_all:
     hide screen file_slots
 
     # 收卷那一屏是玩家看到的最后一页，单独截一张。
-    $ _final = ["手里的证据 8 ／ 33 条。", "逼出的沉默 14 ／ 14 处。",
+    # 分母从发言表里现算：动了破绽表而这一屏还写着旧数字，截图就是在演一场没发生的戏。
+    $ _sil_all = sum(len([s for s in r if s.weak_to and s.hit_kind == "silence"])
+                     for r in (ROUND1, ROUND2, ROUND3, ROUND4, ROUND5))
+    $ _final = ["手里的证据 8 ／ %d 条。" % len(EVIDENCE),
+                "逼出的沉默 %d ／ %d 处。" % (_sil_all, _sil_all),
                 "第八个名字，我终究没有写下来。", "我没有指认谁。这本书不许我指认谁。"]
-    show screen bb_result(14, 14, _final, head="收卷", sub="合上的一页")
+    show screen bb_result(_sil_all, _sil_all, _final, head="收卷", sub="合上的一页")
     pause 2.4
     $ _shot("17_final")
     hide screen bb_result
