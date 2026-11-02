@@ -190,6 +190,12 @@ renpy.exe <SDK 目录> distribute --no-update <本项目绝对路径>
 加了声音之后 win 包 55MB、mac 64MB、linux 47MB，其中约 40MB 是 Ren'Py 运行时
 （两个 dll），8MB 是环境音。
 
+在 Windows 上出 mac／linux 包，引擎末尾会打印一句"unpacking and repacking the
+Linux and Macintosh distributions on Windows is not supported"。这句吓不着人：
+实测解包看权限位，`blackbird.app/Contents/MacOS/blackbird` 和
+`blackbird-linux/.../blackbird` 都是 0755，可执行位带住了。它担心的是"更新已有的包"
+（要解开旧包再打回去），而 `--no-update` 走的是整包重写。
+
 出完包不要目测，跑审计：
 
 ```

@@ -58,6 +58,10 @@ label shot_all:
     $ _shot("08_result")
     hide screen bb_result
 
+    # 图鉴这张要拍成"集齐"的样子：截图脚本只走了第一夜，手里 8 条，
+    # 而玩家真正会看到的页面是三十几条排下来第一屏只剩三张的样子。
+    # 不灌满就永远不知道这一页要不要翻页提示、行高够不够。
+    $ have.update(EVIDENCE.keys())
     show screen bb_gallery
     pause 2.4
     $ _shot("09_gallery")

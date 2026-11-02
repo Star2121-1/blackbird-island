@@ -254,7 +254,7 @@ screen main_menu():
 
     text "黑鸟岛" xalign 0.06 yalign 0.30 style "bb_hero"
     text "筛　子" xalign 0.065 yalign 0.435 size BB_T_COVER color bb_rust_dark font bb_serif_b
-    text "一份没有结案的手稿。赢的方式不是指认谁，是逼出多少沉默。" xalign 0.065 yalign 0.525 xsize 780 style "bb_note"
+    text "一份没有结案的手稿。赢的方式不是指认谁，是逼出多少沉默。" xalign 0.065 yalign 0.525 xsize 900 style "bb_note"
 
     vbox:
         # 右界 1504+320=1824＝5% 安全区的边界。原来从 1520 起栏，右边 16 像素压在
