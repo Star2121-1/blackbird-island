@@ -364,6 +364,13 @@ init python:
             bb_trace("[PAGE] " + key)
         bb_sfx("page")
 
+    def bb_page_after_load():
+        """和 BB_AMB_NOW 同一只坑：读档后卡片会重画，但"这一张已经响过"的记忆还在，
+        落在哪一章就少哪一章那一记翻页声。"""
+        BB_PAGE_NOW["key"] = None
+
+    config.after_load_callbacks.append(bb_page_after_load)
+
 
 # ---------- 标题屏的一条判据 ----------
 # 引擎里没有 FileAvailable() 这种屏函数（试过，报错），所以"有没有档"要自己问
