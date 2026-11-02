@@ -70,10 +70,13 @@ label day2_pass:
 
 # ---------------- 第三日 → 第四日 ----------------
 label day3_pass:
-    call screen bb_card("过　夜", "十一月二十日", "木匣开着。那张脸正对门口。", "十一月二十日", BB_SNAP("bg_east_wing_room.jpg"), mood="dread")
+    call screen bb_card("过　夜", "十一月二十日", "木匣开着。那张脸正对门口。", "十一月二十日", BB_SNAP("bg_east_wing_room_night.jpg"), mood="dread")
     $ bb_day = "二〇二五年十一月十日"
     $ bb_mood("dust")
-    scene bg_hangzhou
+    # 这一日两条笔记都在灯下——清晨那条开口就是"我把那截纸放在台灯下"，十一月
+    # 六点的杭州天是黑的；夜里那条更不必说。所以整段用夜版阅览室（同一间房，
+    # 窗外收黑、台灯那圈亮着），到十一日"白天"那条再换回白昼那张。
+    scene bg_hangzhou_night
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十日，清晨。"
     # 终稿这一天有两条笔记：清晨去调户籍（1861），夜里重看那四处淡墨（2035）。
@@ -156,5 +159,5 @@ label day5_pass:
 
 # ---------------- 第六日 · 收卷 ----------------
 label day6_end:
-    call screen bb_card("最后一页", "合上", "手稿到这里为止。", "二〇二五年十一月十五日", BB_SNAP("bg_hangzhou.jpg"), mood="dust")
+    call screen bb_card("最后一页", "合上", "手稿到这里为止。", "二〇二五年十一月十五日", BB_SNAP("bg_hangzhou_night.jpg"), mood="dust")
     jump epilogue

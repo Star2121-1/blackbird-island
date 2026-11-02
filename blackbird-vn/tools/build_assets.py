@@ -37,6 +37,31 @@ BG_KEYS = ["bg_hangzhou", "bg_dock", "bg_hall_long", "bg_hall_ring", "bg_study",
 # 整片白墙和落地窗，压完纱仍然读起来像一张没洗过的样片，不像"压在纸下的照片"。
 # 0.70 把它带到 82，正好回到那一堆里；全局调暗会把最暗那两张（20、25）一起闷死。
 BG_EXPOSURE = {"bg_hangzhou": 0.70}
+# 夜版不新画一张，从它替换的那张白天底图派生：家具、机位、透视必须一模一样，
+# 否则玩家会以为换了一个房间——第六轮删掉"餐厅""船库"就是这类错（见上面的注释）。
+# 派生五段：收掉窗外那条白天高光 → 压暗偏色 → 给一道有方向的光 → 拉开反差 → 收四角。
+#   day    源图（必须先洗，它是从洗好的白天 jpg 往后接的）
+#   lum    目标亮度 ÷ 现亮度。按**比例**给，不给绝对值：十三张原图自己的亮度从 20 到
+#          85 都有，一个全局乘数会把最暗那两张闷成死黑、把杭州那张留成灰；
+#          而比例这一档在原图重画之后仍然成立，绝对值不成立。
+#   tint   三通道乘数（夜=冷，黄昏=暖）
+#   side   光来的那一侧：left/right 横着走（窗在侧面），up/down 竖着走（台灯在桌上，
+#          光自下往上）；None＝这间房的光不在边上，别硬造一道渐变
+#   cool   侧光强度（0–255 一档），颜色和 tint 的偏色同向
+#   contrast 按均值拉开一档反差，缺省 1.3；越暗的那张越经不起纱压，多拉一点
+#   sky    (窗带下沿占画高的比例, 压暗的 gamma)：夜里窗外是黑的，而一张白天照里
+#          最露馅的就是那条亮天际线——它比整体亮度更先被人眼读到。
+BG_NIGHT = {
+    "bg_study_night":          dict(day="bg_study", lum=0.56, tint=(0.84, 0.92, 1.14),
+                                    side="right", cool=26.0),
+    "bg_east_wing_room_night": dict(day="bg_east_wing_room", lum=0.52,
+                                    tint=(0.80, 0.90, 1.18), side=None, cool=11.0,
+                                    contrast=1.45),
+    "bg_bedroom_dusk":         dict(day="bg_bedroom_day", lum=0.66, tint=(1.06, 0.94, 0.80),
+                                    side="left", cool=18.0),
+    "bg_hangzhou_night":       dict(day="bg_hangzhou", lum=0.62, tint=(1.04, 0.98, 0.90),
+                                    side="down", cool=14.0, sky=(0.56, 6.0)),
+}
 SPR_KEYS = ["spr_shen", "spr_wang", "spr_zhao", "spr_fang", "spr_zhou",
             "spr_lin", "spr_su", "spr_me", "spr_gu"]
 # 立绘统一画布 + 统一头高。头高定标，人站同一条底线；画布定宽，头才落在席次上。
@@ -89,6 +114,71 @@ def build_bg(key):
     out = os.path.join(DST, key + ".jpg")
     im.save(out, "JPEG", quality=86, optimize=True)
     print("OK  ", key, im.size, "%d KB" % (os.path.getsize(out) // 1024))
+    return True
+
+
+def build_bg_night(key):
+    """夜版不另画一张原图，从洗好的白天 jpg 往后接四段。
+
+    为什么必须从派生图来：机位、透视、家具得和白天那张逐像素对上。同一间房换个
+    角度再画一遍，玩家读到的是"他们挪去了另一间房"——第六轮删掉"餐厅""船库"
+    就是这一类错（见 BG_KEYS 上面那段）。
+    """
+    cfg = BG_NIGHT[key]
+    day, lum_scale, tint = cfg["day"], cfg["lum"], cfg["tint"]
+    side, cool = cfg.get("side"), cfg.get("cool", 0.0)
+    src = os.path.join(DST, day + ".jpg")
+    if not os.path.exists(src):
+        print("MISS bg_night", key, "（缺白天底图 " + day + "）")
+        return False
+    a = np.asarray(Image.open(src).convert("RGB"), dtype=np.float32)
+    h, w, _ = a.shape
+
+    if cfg.get("sky"):
+        # 窗外先收，再压暗：gamma 吃的是高光，而窗框、楼体本来就暗，不用动它。
+        frac, gamma = cfg["sky"]
+        rows = np.arange(h, dtype=np.float32)[:, None]
+        band = np.clip((frac - rows / (h - 1)) / 0.10, 0.0, 1.0)
+        dark = np.clip(a / 255.0, 0, 1) ** gamma * 255.0
+        a = a * (1 - band[..., None]) + dark * band[..., None]
+
+    a = a * lum_scale * np.asarray(tint, dtype=np.float32)
+
+    # 侧光的颜色和 tint 的偏色同向：冷调那两张亮侧更蓝，黄昏和台灯那两张亮侧更暖。
+    cast = np.asarray(tint, dtype=np.float32)
+    cast = cast - cast.mean()
+    cast = cast / np.abs(cast).max()
+    if side:
+        # 夜里读得出"夜"，靠的是光有方向，不是靠整体压暗——只压暗会得到一张
+        # 曝光不足的白天照。靠光那一侧抬到 1.16，背光那侧压到 0.84。
+        # 方向按这间房的光源给：窗在侧面就横着走（书房），台灯在桌上一排就自下往上（阅览室）。
+        axis = {"left": 1, "right": 1, "up": 0, "down": 0}[side]
+        n = w if axis == 1 else h
+        ramp = np.linspace(0.0, 1.0, n, dtype=np.float32)
+        if side in ("left", "down"):
+            ramp = ramp[::-1]
+        ramp = ramp[:, None, None] if axis == 0 else ramp[None, :, None]
+        a *= 0.84 + 0.32 * ramp
+        a += cool * (2.0 * ramp - 1.0) * cast
+    else:
+        a += cool * cast
+
+    # 拉开一档反差。纸纱会把暗部的层次吃掉（量过：raw 22 落屏 84，raw 46 落屏 101），
+    # 派生时先按均值展一档，纱吃掉之后那一整张里才还剩层次，而不是一片均匀的灰。
+    m = a.mean()
+    a = m + (a - m) * cfg.get("contrast", 1.3)
+
+    # 收四角：夜里视野往中间收，一圈边上不留可读的细节。
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    d = np.hypot((xx - (w - 1) / 2) / (w / 2), (yy - (h - 1) / 2) / (h / 2))
+    a *= (1.0 - 0.30 * np.clip(d - 0.70, 0.0, 0.30) / 0.30)[..., None]
+
+    b = np.clip(a, 0, 255).astype(np.uint8)
+    out = os.path.join(DST, key + ".jpg")
+    Image.fromarray(b).save(out, "JPEG", quality=86, optimize=True)
+    lum = b @ np.array([0.2126, 0.7152, 0.0722])
+    print("OK  ", key, b.shape[1], "x", b.shape[0],
+          "%d KB" % (os.path.getsize(out) // 1024), "lum=%.1f" % lum.mean())
     return True
 
 
@@ -233,6 +323,9 @@ def main():
     bad = []
     for k in BG_KEYS:
         if not build_bg(k):
+            bad.append(k)
+    for k in sorted(BG_NIGHT):
+        if not build_bg_night(k):
             bad.append(k)
     for k in SPR_KEYS:
         if not build_sprite(k):

@@ -448,7 +448,7 @@ label bb_result_card(rt):
 label epilogue:
     if bb_auto:
         $ bb_trace("[AUTO] epilogue")
-    scene bg_hangzhou
+    scene bg_hangzhou_night
     $ bb_day = "二〇二五年十一月十五日"
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十五日，夜里。"

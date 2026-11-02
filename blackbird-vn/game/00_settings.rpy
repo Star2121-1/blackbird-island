@@ -367,12 +367,13 @@ init python:
         "bg_manor_ext": "amb_sea",
         "bg_corridor": "amb_wind",
         "bg_east_wing": "amb_rain", "bg_east_wing_room": "amb_rain",
+        "bg_east_wing_room_night": "amb_rain",
         "bg_bridge_night": "amb_rain",
         "bg_hall_long": "amb_room", "bg_hall_ring": "amb_room",
         "bg_hall_table": "amb_room",
-        "bg_study": "amb_room",
-        "bg_bedroom_day": "amb_room",
-        "bg_hangzhou": "amb_room",
+        "bg_study": "amb_room", "bg_study_night": "amb_room",
+        "bg_bedroom_day": "amb_room", "bg_bedroom_dusk": "amb_room",
+        "bg_hangzhou": "amb_room", "bg_hangzhou_night": "amb_room",
     }
     BB_AMB_FILE = {
         "amb_sea": "audio/amb_sea.wav",
@@ -387,10 +388,12 @@ init python:
     BB_MUS_BY_BG = {
         "bg_dock": "mus_sea", "bg_shore": "mus_sea", "bg_manor_ext": "mus_sea",
         "bg_hall_long": "mus_hall", "bg_hall_ring": "mus_hall",
-        "bg_hall_table": "mus_hall", "bg_study": "mus_hall",
+        "bg_hall_table": "mus_hall", "bg_study": "mus_hall", "bg_study_night": "mus_hall",
         "bg_corridor": "mus_room", "bg_east_wing": "mus_room",
-        "bg_east_wing_room": "mus_room", "bg_bedroom_day": "mus_room",
-        "bg_hangzhou": "mus_room", "bg_bridge_night": "mus_room",
+        "bg_east_wing_room": "mus_room", "bg_east_wing_room_night": "mus_room",
+        "bg_bedroom_day": "mus_room", "bg_bedroom_dusk": "mus_room",
+        "bg_hangzhou": "mus_room", "bg_hangzhou_night": "mus_room",
+        "bg_bridge_night": "mus_room",
     }
     BB_MUS_FILE = {
         "mus_hall": "audio/mus_hall.wav",

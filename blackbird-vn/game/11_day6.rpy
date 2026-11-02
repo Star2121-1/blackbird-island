@@ -175,6 +175,8 @@ label ch24:
     ME "手稿最后一页，那一行，我没有改。"
     ME "我不知道，我是不是陈默。"
     N "墨色，比正文，淡了一点。我没有重描它。"
+    # 这一段不换夜版：台词里没有时辰，光靠下一张卡推。夜版从尾声那条
+    # "十一月十五日，夜里"开始（`03_flow.rpy` 的 epilogue）。
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     GU "手稿，最后一页。这一行，我读了第四遍。"

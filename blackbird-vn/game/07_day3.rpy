@@ -156,8 +156,8 @@ label ch12:
 
 # ---------------- 第十三章：那张脸 ----------------
 label ch13:
-    call screen bb_card("第十三章", "那张脸", "夜里，木匣开了，照片对着空杯。", "十一月十九日", BB_SNAP("bg_east_wing_room.jpg"), mood="dread")
-    scene bg_east_wing_room
+    call screen bb_card("第十三章", "那张脸", "夜里，木匣开了，照片对着空杯。", "十一月十九日", BB_SNAP("bg_east_wing_room_night.jpg"), mood="dread")
+    scene bg_east_wing_room_night
     N "那天夜里，沈南舟进了东翼。"
     N "二十年来，他每年回来，待一夜。但这一夜，他不是待。"
     N "他取回一只木匣。打开。"

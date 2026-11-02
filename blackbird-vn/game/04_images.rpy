@@ -49,18 +49,23 @@ init python:
 
 
 image bg_hangzhou = BB_IMG("bg_hangzhou.jpg", BB_BG("#101520", "杭州 · 档案馆阅览室"))
+image bg_hangzhou_night = BB_IMG("bg_hangzhou_night.jpg", BB_BG("#0a0d14", "杭州 · 夜里的阅览室"))
 image bg_dock = BB_IMG("bg_dock.jpg", BB_BG("#141a22", "黑鸟岛 · 码头"))
 image bg_hall_long = BB_IMG("bg_hall_long.jpg", BB_BG("#151922", "大厅 · 长桌"))
 image bg_hall_ring = BB_IMG("bg_hall_ring.jpg", BB_BG("#0f131b", "大厅 · 环形沙发"))
 image bg_hall_table = BB_IMG("bg_hall_table.jpg", BB_BG("#0f131b", "大厅 · 八仙桌"))
 image bg_study = BB_IMG("bg_study.jpg", BB_BG("#161420", "书房 · 档案"))
+image bg_study_night = BB_IMG("bg_study_night.jpg", BB_BG("#0d0b14", "书房 · 夜"))
 
 image bg_east_wing = BB_IMG("bg_east_wing.jpg", BB_BG("#141821", "东翼 · 封着的走廊"))
 image bg_east_wing_room = BB_IMG("bg_east_wing_room.jpg", BB_BG("#12151c", "东翼 · 那一间房"))
+image bg_east_wing_room_night = BB_IMG("bg_east_wing_room_night.jpg",
+                                       BB_BG("#080a10", "东翼 · 那间房，夜里"))
 image bg_corridor = BB_IMG("bg_corridor.jpg", BB_BG("#151a22", "一楼 · 走廊与楼梯"))
 image bg_shore = BB_IMG("bg_shore.jpg", BB_BG("#0d1116", "礁石 · 退潮"))
 image bg_manor_ext = BB_IMG("bg_manor_ext.jpg", BB_BG("#0e1420", "黑鸟岛 · 从海上看"))
 image bg_bedroom_day = BB_IMG("bg_bedroom_day.jpg", BB_BG("#1a1a1e", "客房 · 白昼"))
+image bg_bedroom_dusk = BB_IMG("bg_bedroom_dusk.jpg", BB_BG("#141014", "客房 · 傍晚"))
 image bg_bridge_night = BB_IMG("bg_bridge_night.jpg", BB_BG("#0a0f16", "临东海大桥 · 雨夜"))
 
 image spr_shen = BB_PLAIN("spr_shen.png", BB_SPRITE("#b5342a", "沈"))

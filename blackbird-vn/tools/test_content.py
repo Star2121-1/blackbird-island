@@ -23,6 +23,8 @@ import re
 import sys
 import types
 
+import numpy as np
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME = os.path.join(HERE, "game")
 
@@ -608,12 +610,20 @@ assets = io.open(os.path.join(HERE, "tools", "build_assets.py"), encoding="utf-8
 def _list(name):
     m = re.search(name + r" = \[(.*?)\]", assets, re.S)
     return re.findall(r'"([a-z0-9_]+)"', m.group(1)) if m else []
+
+# 夜版那张表从管线 import，不在这里抄一份：抄的那份会在某次改参数之后过期，
+# 然后这条闸就开始拿旧表验新图，验的还是"上次那张图长什么样"。
+sys.path.insert(0, os.path.join(HERE, "tools"))
+import build_assets as BA
+NIGHT = BA.BG_NIGHT
+WASHED = set(_list("BG_KEYS")) | set(NIGHT)
+
 check("每张注册的背景都在洗图清单里（漏 %d 张）"
-      % (len(set(BG_REG.values())) - len(set(BG_REG.values()) & set(_list("BG_KEYS")))),
-      set(BG_REG.values()) <= set(_list("BG_KEYS")))
+      % (len(set(BG_REG.values())) - len(set(BG_REG.values()) & WASHED)),
+      set(BG_REG.values()) <= WASHED)
 check("洗图清单里没有没注册的背景（多 %d 张）"
-      % (len(set(_list("BG_KEYS"))) - len(set(BG_REG.values()))),
-      set(_list("BG_KEYS")) <= set(BG_REG.values()))
+      % (len(WASHED) - len(set(BG_REG.values()))),
+      WASHED <= set(BG_REG.values()))
 check("每张注册的立绘都在洗图清单里",
       set(SPR_REG.values()) <= set(_list("SPR_KEYS")))
 
@@ -625,13 +635,86 @@ for key, fname in sorted(SPR_REG.items()):
     check("盘上有 images/%s.png" % fname,
           os.path.exists(os.path.join(GAME, "images", fname + ".png")))
 
+# ---------------- 夜版底图 ----------------
+# 夜版不另画一张原图，是从白天那张派生的。这条链有三处会静悄悄断：
+#   表里换了源图 → 两张不是同一间房，玩家读到的是"他们挪去了另一间房"；
+#   改了参数没重跑管线（或手改过图）→ 盘上那张和剧本指向的名字对不上；
+#   参数跑偏 → 夜版比白天还亮，或者整片压成死黑。
+# 前两条用"重算一遍、逐字节对上"管住（派生是纯函数，重算必须一模一样）；
+# 第三条只能问像素。
+def _lum(fname):
+    from PIL import Image
+    a = np.asarray(Image.open(os.path.join(GAME, "images", fname + ".jpg")).convert("RGB"),
+                   dtype=np.float32)
+    return a @ np.array([0.2126, 0.7152, 0.0722])
+
+
+def _rebuild_night(key):
+    """把这一张按管线重算到临时目录，回字节。换 DST 是因为 build_bg_night 读写都走它。"""
+    import contextlib
+    import shutil
+    import tempfile
+    tmp = tempfile.mkdtemp()
+    shutil.copy(os.path.join(GAME, "images", NIGHT[key]["day"] + ".jpg"), tmp)
+    old, BA.DST = BA.DST, tmp
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            ok = BA.build_bg_night(key)
+    finally:
+        BA.DST = old
+    p = os.path.join(tmp, key + ".jpg")
+    data = io.open(p, "rb").read() if ok and os.path.exists(p) else None
+    shutil.rmtree(tmp, ignore_errors=True)
+    return data
+
+
+check("夜版表里的每一张都注册了（漏注册＝剧本引用未注册的那一片纯色）",
+      set(NIGHT) <= set(BG_REG))
+check("夜版都从洗好的白天底图派生（不许拿夜图再派生，也不许指一个没洗过的名）",
+      all(c["day"] in set(_list("BG_KEYS")) and c["day"] in set(BG_REG.values())
+          for c in NIGHT.values()),
+      )
+for key in sorted(NIGHT):
+    cfg = NIGHT[key]
+    shipped = io.open(os.path.join(GAME, "images", key + ".jpg"), "rb").read() \
+        if os.path.exists(os.path.join(GAME, "images", key + ".jpg")) else None
+    check("夜版和管线重算出来的一模一样（改过表没重跑、或者图被手改过）：%s" % key,
+          shipped is not None and shipped == _rebuild_night(key))
+    day_l, night_l = _lum(cfg["day"]), _lum(key)
+    check("夜版比白天那张暗（%.0f → %.0f）：%s" % (day_l.mean(), night_l.mean(), key),
+          night_l.mean() < day_l.mean() * 0.85)
+    check("夜版没压成一片死黑（中位 %.1f、最亮一档 %.1f、反差 %.1f）：%s"
+          % (np.percentile(night_l, 50), np.percentile(night_l, 95), night_l.std(), key),
+          np.percentile(night_l, 50) >= 4.0 and np.percentile(night_l, 95) >= 30.0
+          and night_l.std() >= 12.0)
+# 图和字得对得上：夜版底图只能落在写着夜的那一段。
+# 防的是"顺手给一间房配了夜版，而剧本里那一幕发生在下午"——玩家不会报这个错，
+# 只会以为自己漏读了。窗口取上下各 12 行，但只算玩家看得见的两样：台词和章节卡。
+# 整段扫不行——`$ round3 = Debate(..., head="第三夜 · 结算")` 这种代码里的"夜"
+# 会把序章那一段白天也判成夜里，闸门就成了摆设。
+NIGHT_WORD = re.compile(r"夜|傍晚|黄昏|台灯|凌晨|天黑|停电|熄")
+ON_SCREEN = re.compile(r'^\s*(?:[A-Z]+ "|call screen bb_card\()')
+for _p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    _ls = io.open(_p, encoding="utf-8").read().split("\n")
+    for _i, _ln in enumerate(_ls):
+        _m = re.match(r"\s*scene (bg_[a-z0-9_]+)\s*$", _ln)
+        if not _m or _m.group(1) not in NIGHT:
+            continue
+        _near = "\n".join(l for l in _ls[max(0, _i - 12):_i + 13] if ON_SCREEN.match(l))
+        check("夜版底图落在写着夜的段落里：%s（%s:%d）"
+              % (_m.group(1), os.path.basename(_p), _i + 1), bool(NIGHT_WORD.search(_near)))
+
 used = set()
 for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
     if os.path.basename(p) in ("04_images.rpy", "00_settings.rpy"):
         continue          # 注册表自己、环境音表——都不算"这一屏用了它"
     used |= set(re.findall(r"\b(bg_[a-z0-9_]+|spr_[a-z0-9_]+)\b",
                            io.open(p, encoding="utf-8").read()))
-dead = sorted(k for k in list(BG_REG) + list(SPR_REG) if k not in used)
+dead = sorted(k for k in list(BG_REG) + list(SPR_REG)
+              if k not in used and k not in {c["day"] for c in NIGHT.values()})
+# 豁免只给"夜版的白天底图"，而且只有一张真的用得上：东翼那间房只在夜里进（第十三章
+# 和第三夜那张卡），白天那张不上屏。它仍然必须注册、必须在盘上——vibe_images/ 不进 git，
+# 洗好的白天 jpg 就是派生的唯一输入，删了它，别人从克隆里重跑管线拼不出那一夜。
 check("注册的图全被引用（没人用的 %d 张）" % len(dead), not dead)
 for k in dead:
     info("没人引用：" + k)
