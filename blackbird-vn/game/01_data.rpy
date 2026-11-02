@@ -130,6 +130,66 @@ init -1 python:
                 out.append((ch, sum(1 for k in ids if k in have), len(ids)))
         return out
 
+    # ---------------- 并排：两件之间的那一行 ----------------
+    # 终章把筛子交到玩家手里之后，桌上多一个动作：挑两条证据并排放下。
+    # 中间那一行只在手稿自己把这两件并排写过的地方出现。规矩比台词那道更严：
+    # 整段必须连着抄，不许改一个字，也不许把两个小句从不同的章里拼起来
+    # （check_verbatim 的 each_pair 走的是"norm 之后是正文子串"，不是子序列）。
+    # 没并排写过的，中间空着——这一屏不打分，也不许把空读成"错了"。
+    PAIRS = {}
+
+    def PA(a, b, line):
+        PAIRS[frozenset((a, b))] = line
+
+    PA("seal_rec", "face_photo",
+       "他把二〇〇九那张封装记录，和那张黑白照片，并排摊在桌上。")
+    PA("envelope", "seal_rec",
+       "沈南舟收起那张照片。他把它和那张封装记录，并折进一只信封。")
+    PA("envelope", "face_photo",
+       "沈南舟收起那张照片。他把它和那张封装记录，并折进一只信封。")
+    PA("seal_rec", "blank_col",
+       "他把二〇〇九那张封装记录，重新摊在八仙桌上。那一栏，空的，复核人。")
+    PA("roster", "cup_empty",
+       "桌上摆着八只杯。名单上，八个名字，一人一只。")
+    PA("face_photo", "cup_empty",
+       "他把照片放在八仙桌上，正对着那只空杯。")
+    PA("cup_empty", "cup_mark",
+       "桌上多了一截浅白的纸。纸没有写字，只压出一个浅淡的杯印。")
+    PA("wet_trail", "note",
+       "但地上有一滴水渍——从书房方向延伸过来，在水渍的尽头，有一张被踩了一半的纸片。")
+    PA("note", "watch_badge",
+       "那张纸条左角有一个笔画的钩，周亦安那册会徽本子的末页写着“陈是守望者之一”——苏蔓那句“同一只手”，比的是这两处的笔迹。")
+    PA("photos", "watch_badge",
+       "这张更近，能看清连帽衫的拉链，和袖口处一个小小的绣标。")
+    PA("erased8_photo", "watch_badge",
+       "名单。还有那个绣标——周亦安补拍的那一张，我存过。")
+    PA("pos_c_sheet", "plaque_record",
+       "左边，位置C的勘查页。中间，那张立牌的记录。右边，一张空白的纸。")
+    PA("pos_c_sheet", "blank_sheet",
+       "左边，位置C的勘查页。中间，那张立牌的记录。右边，一张空白的纸。")
+    PA("plaque_record", "blank_sheet",
+       "左边，位置C的勘查页。中间，那张立牌的记录。右边，一张空白的纸。")
+    PA("pos_c_sheet", "bridge_count",
+       "二〇〇九年，有人把一具尸体摆到位置C。十二米。让它看起来，属于那场车祸。")
+    PA("time_window", "pos_c_sheet",
+       "二〇〇九年。位置C那具尸体，九到十时已经死了。撞车，十点四十七。")
+    PA("bridge_count", "plaque_record",
+       "四十七分钟，够一个人做三件事。摆。立牌。签上自己的名字。")
+    PA("east_wing_records", "plaque_record",
+       "是立牌的记录。一张纸上，一个名字，一个现场，一个记号。一年一叠，摞了一摞。")
+    PA("invite", "phrase",
+       "可按林晚刚才的说法，九点死的人，十点四十七才被撞——那不叫交通事故，那叫先杀后撞。")
+
+    # 自动播放摆上去的那一对：第二十三章桌上真的并排过的两件（这一屏挂在第二十四章，
+    # 引用的是上一章那一拍）。
+    BB_AUTO_PAIR = ("seal_rec", "face_photo")
+
+    def pair_line(a, b):
+        """两件都放下才有中间那一行。同一件不算并排。"""
+        if not a or not b or a == b:
+            return ""
+        return PAIRS.get(frozenset((a, b)), "")
+
     # ---------------- 圆桌发言 ----------------
     class Statement(object):
         """weak_to=None 表示这句话本轮没有破绽。

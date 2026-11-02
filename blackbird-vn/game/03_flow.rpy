@@ -280,6 +280,30 @@ label hangman_8:
     return
 
 
+# ---------------- 并排：两件之间 ----------------
+label bb_pair_desk():
+    # 交互挂在屏身上（点了哪一条），这一层只管把 sel 攒到两件、算出中间那一行。
+    # sel 是 store 上的变量，存盘时它跟着进档——但这一屏不留成绩：每次进这张桌
+    # 都从空桌摆起（下面那行 $ sel = []），收账那页的数字一个都不动。
+    $ sel = []
+    while True:
+        $ line = pair_line(sel[0], sel[1]) if len(sel) == 2 else ""
+        call screen bb_pair(sel, line)
+        if _return[0] == "exit":
+            return
+        elif _return[0] == "clear":
+            $ sel = []
+        elif _return[1] in sel:
+            # 再点一次桌上已有的那条，把它收回轨里。
+            $ sel.remove(_return[1])
+        elif len(sel) >= 2:
+            # 第三件落下的话，先放的那一张退回轨里——不换掉就得先点"收回"，
+            # 手快的玩家会以为这一屏卡住了。
+            $ sel = [sel[1], _return[1]]
+        else:
+            $ sel.append(_return[1])
+
+
 # ---------------- 第六章：大厅 · 第一轮 ----------------
 label ch6:
     call screen bb_card("第六章", "大厅", "每人只有一次机会——说完就要等下一个人。", "十一月十七日", BB_SNAP("bg_hall_ring.jpg"))

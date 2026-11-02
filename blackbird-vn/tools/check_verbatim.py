@@ -21,6 +21,11 @@ Third gate, added after the first two were found to leak: quoted speech. A
 inside it is some named person talking, and neither LINE_RE nor STMT_RE sees it.
 Every such pair must be in the manuscript or echo a line this script already
 verified; short ones are button labels, not speech.
+
+Fourth gate: the 并排 desk. Its middle line is data (`PA("a","b",line)`), sits
+outside every label, and LINE_RE will never reach it. So it gets a stricter rule
+than speech: the whole run must appear *contiguously* in the manuscript — no
+subsequence, no stitching one clause from chapter 13 to one from chapter 19.
 """
 import ast
 import glob
@@ -257,6 +262,24 @@ def each_quote():
                     yield os.path.basename(p), i, q.group(1)
 
 
+# ---------------- 数据层里给玩家读的那一行 ----------------
+# 并排那一屏的中间行是玩家在那个界面上唯一读到的"内容"。它写成 PA() 的数据，
+# 不在任何 label 里，LINE_RE 一辈子看不见——所以它得有自己的门，而且比台词那道
+# 更严：整段必须在正文里*连着*出现（norm 之后是子串）。子序列不算，跨小句拼贴
+# 不算。把第十三章的一句和第十九章的一句缝成一屏"新证据"，正是这道门要挡的。
+PAIR_RE = re.compile(r'PA\(\s*"([a-z0-9_]+)"\s*,\s*"([a-z0-9_]+)"\s*,\s*'
+                     r'"((?:[^"\\]|\\.)*)"')
+
+
+def each_pair():
+    for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
+        body = io.open(p, encoding='utf-8').read()
+        for m in PAIR_RE.finditer(body):
+            ln = body[:m.start()].count('\n') + 1
+            yield os.path.basename(p), ln, m.group(1), m.group(2), \
+                ast.literal_eval('"' + m.group(3) + '"')
+
+
 def main():
     src = src_text()
     src_k = keep_punct(io.open(NOVEL, encoding='utf-8').read())
@@ -324,6 +347,13 @@ def main():
             continue
         invented.append(u'%s:%d “%s”' % (fn, ln, frag[:48]))
 
+    ptot = 0
+    pmiss = []
+    for fn, ln, a, b, line in each_pair():
+        ptot += 1
+        if norm(line) not in src:
+            pmiss.append(u'%s:%d %s×%s “%s”' % (fn, ln, a, b, line[:48]))
+
     cards = 0
     nocard = []
     for p in sorted(glob.glob(os.path.join(GAME, '*.rpy'))):
@@ -361,11 +391,16 @@ def main():
     print(u'引号里的话 %d 段（旁白中代人物说的：%d）' % (qtot, len(invented)))
     for x in invented[:20]:
         print(u'  VOICE ' + x)
+    print(u'并排句 %d 条（不在正文里连着的：%d）' % (ptot, len(pmiss)))
+    for x in pmiss[:20]:
+        print(u'  PAIR ' + x)
     over = []
     if quoted < 1:
         over.append(u'引号代号的台词一行都没扫到——LINE_RE 的 SPEAK 分支失效了')
     if qtot < 40:
         over.append(u'只扫到 %d 段引号里的话——STR_RE／CQuote 没吃到行，回声闸门在空转' % qtot)
+    if ptot < 8:
+        over.append(u'只扫到 %d 条并排句——PAIR_RE 没吃到 PA()，数据层那道门在空转' % ptot)
     if stricted < 400:
         over.append(u'拆句删只比对了 %d 段——keep_punct／clauses 没吃到行，闸门在空转' % stricted)
     if free > FREE_MAX:
@@ -376,7 +411,7 @@ def main():
                     % (len(nums), NUM_MAX))
     for x in over:
         print(u'  SCOPE ' + x)
-    return 1 if (miss or bang or nocard or cut or over or invented) else 0
+    return 1 if (miss or bang or nocard or cut or over or invented or pmiss) else 0
 
 
 if __name__ == '__main__':

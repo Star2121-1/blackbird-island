@@ -561,6 +561,9 @@ screen help():
         text "抵错了用掉一次机会。第一夜三次，往后的每一夜四次——破绽越多，给的余地越大。" style "bb_body_sub" xsize 1000
         text "机会用完了，桌上剩下的话照旧听得完；只是那几句再抵不动，什么时候收轮由你按。" style "bb_body_sub" xsize 1000
         text "主人不会沉默，他把问题推回你手上，那一条不算赢——但抵中他，会拿到他亲口承认的那一句。" style "bb_body_sub" xsize 1000
+        # 终章那张桌是第十轮加的。它跟对质反着来：不看你能不能让谁停下，只看你自己
+        # 把哪两件放到一块儿。写在帮助页，是因为"中间空着"很容易被读成"摆错了"。
+        text "终章的桌上还有一道并排：挑两条证据并排放下，中间那一行只抄正文连着写过的地方。没写过的就空着——那一屏不评分，也不替你得结论。" style "bb_body_sub" xsize 1000
 
         text "操　作" style "bb_label"
         use bb_key("点击 ／ 空格 ／ 回车", "继续下一句")
@@ -1162,6 +1165,105 @@ screen bb_hangman(hz, picked, msg, fails=0):
     # 这一局是设计成拼不出的（手稿里就是"我没有看清"）。玩家连错两次还以为是自己
     # 组合不对，会一直试下去。第二次失败之后把实话写进那颗按钮。
     textbutton ("不拼了——我没有看清" if fails >= 2 else "不拼了") xalign 0.5 yalign 0.95 yanchor 1.0 action Return(("giveup", None)) style "bb_btn" text_style "bb_btn_text"
+
+
+# ---------------- 并排：两件之间 ----------------
+screen bb_pair(sel, line):
+    """把两条证据并排放下。中间那一行只来自 PAIRS（正文连着写过的那一段），
+    界面上这一屏不打分：没有对错、没有计数、也不发证据——所以屏体里
+    一个句号都不许出现，长句一律回数据层去（test_content 有闸）。"""
+    zorder 60
+    if store.bb_auto:
+        # 自动播放走完整个交互：先放第一件、再放第二件，然后收桌。
+        # 挂在屏身上而不是 label 里，同拼字那一屏——label 走的是同一条循环。
+        if len(sel) >= 2:
+            $ bb_trace("[AUTO] pair " + "＋".join(sel))
+            timer 0.05 action Return(("exit", None))
+        else:
+            timer 0.05 action Return(("pick", BB_AUTO_PAIR[len(sel)]))
+    use bb_page_bg()
+    use bb_head("并排", "两件之间", "第二十四章 · 大厅")
+
+    text "挑两条并排放下——正文把它们并排写过的，中间留一行；没有写过的，中间空着" style "bb_body_sub" color bb_pencil xsize 1420 xalign 0.055 yalign 0.235
+
+    $ _a = sel[0] if len(sel) > 0 else None
+    $ _b = sel[1] if len(sel) > 1 else None
+
+    # 两张便签钉死宽度：第二件落下的时候，第一张不许往左挤——挤一下，
+    # 玩家会以为刚才那一句被谁动过。高度按最长的简报（三行）留，不留空档，
+    # 否则半张纸是空的，读起来像还没加载完。
+    hbox:
+        area (110, 330, 1420, 230)
+        spacing 40
+        for _id in (_a, _b):
+            frame:
+                xsize 690
+                ysize 230
+                padding BB_PAD_SLIP
+                background BB_SLIP
+                has vbox
+                spacing 12
+                if _id:
+                    text EVIDENCE[_id].name style "bb_label" color bb_gold_dark xsize 640
+                    text EVIDENCE[_id].brief style "bb_body_sub" xsize 640
+                    text EVIDENCE[_id].chapter style "bb_micro" color bb_pencil
+                else:
+                    text "空着" style "bb_label" color bb_pencil xalign 0.5 yalign 0.5
+
+    # 中间那一行落在两张下面，占满桌宽；没有可抄的，就只留一句状态。
+    vbox:
+        area (110, 610, 1420, 150)
+        spacing 10
+        if line:
+            text "并排的那一行" style "bb_micro" color bb_pencil
+            # 加上弯引号：这一行是手稿里的原话，不是界面说的话。表里有几条本身就是
+            # 某个人说出来的（"……我存过"），不加引号就会读成旁白替游戏下了判断。
+            text "“" + line + "”" style "bb_body" xsize 1420
+        elif len(sel) >= 2:
+            text "中间空着" style "bb_micro" color bb_pencil
+
+    # ---- 右轨：手里的证据。同对质那一屏的位置，玩家的肌肉记忆不分两套 ----
+    frame:
+        xsize 240
+        xalign 0.95
+        xanchor 1.0
+        yalign 0.13
+        yanchor 0.0
+        ysize 620
+        padding BB_PAD_CHIP
+        background BB_SLIP
+        has vbox
+        spacing 8
+        text "手里的证据 " + str(len(have)) + " ／ " + str(len(EVIDENCE)) style "bb_micro" xalign 0.5
+        viewport:
+            ysize 540
+            mousewheel True
+            draggable True
+            pagekeys True
+            yinitial 1.0
+            has vbox
+            spacing 6
+            for e in ev_list():
+                button:
+                    style "bb_ev"
+                    xfill True
+                    padding BB_PAD_CHIP
+                    action Return(("pick", e.id))
+                    selected (e.id in sel)
+                    has hbox
+                    spacing 10
+                    add "images/ui/ic_" + EV_ICON.get(e.id, "page") + ".png":
+                        xysize (22, 22)
+                        yalign 0.5
+                    text e.name style "bb_ev_text" xsize 150 yalign 0.5
+
+    hbox:
+        xalign 0.42
+        yalign 0.95
+        spacing 18
+        textbutton "摆好了" action Return(("exit", None)) style "bb_btn" text_style "bb_btn_text" default True
+        if sel:
+            textbutton "收回" action Return(("clear", None)) style "bb_btn" text_style "bb_btn_text"
 
 
 # ---------------- 结算 ----------------

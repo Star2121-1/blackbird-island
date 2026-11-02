@@ -230,6 +230,19 @@ label shot_all:
     $ _shot("21_debate_spent")
     hide screen bb_debate
 
+    # ⑤ 终章那张桌，两格：正文连着写过的那一对（中间有一行），和没写过的那一对（中间空着）。
+    #    空着那一格必须留图——它是这一屏最容易被读成"我摆错了"的状态；
+    #    没有这张图，"那一屏不评分"就只是 test_content 里的一句话。
+    show screen bb_pair(["seal_rec", "face_photo"], pair_line("seal_rec", "face_photo"))
+    pause 2.4
+    $ _shot("22_pair")
+    hide screen bb_pair
+
+    show screen bb_pair(["invite", "lock"], pair_line("invite", "lock"))
+    pause 2.4
+    $ _shot("22b_pair_blank")
+    hide screen bb_pair
+
     # 每张背景单独钉一张。BB_IMG 缺图不报错，只是悄悄换成纯色占位，
     # 光查盘上有没有 jpg 还不够——得看引擎真把那一层画上了屏。
     # 名单向引擎要：新增一张背景不用改这里。

@@ -825,6 +825,110 @@ check("每一条证据的图标都在盘上（缺 %d 种）" % len(noic), not no
 for v in noic:
     info("缺图标：ic_%s.png" % v)
 
+# ---------------- 并排：两件之间（终章那张桌） ----------------
+# 这一屏是第十轮新加的，它的规矩跟对质那几屏相反：不打分。所以闸也朝反方向咬——
+# 不许发证据、不许记数、不许出现裁决词，中间那一行只能从 PAIRS 来。
+# 逐字那一道在 check_verbatim 的 each_pair（整段必须在正文里连着出现），
+# 这里管的是"这一屏不可能被赢"。
+PAIRS = g.get("PAIRS") or {}
+pair_line = g["pair_line"]
+check("并排表非空（%d 对）" % len(PAIRS), len(PAIRS) >= 8)
+bad_pair_id = sorted(i for k in PAIRS for i in k if i not in EVIDENCE)
+check("并排的每一条都在证据表里（写错一个名，那一对就永远摆不出来：%d 条）"
+      % len(bad_pair_id), not bad_pair_id)
+for i in bad_pair_id:
+    info("表里没有：" + i)
+
+# 摆上桌的两件，必须在叫起这张桌之前就已经到手。第十轮之后若有人拿尾声里才
+# 翻出来的那一条去配对，屏上会画一张玩家永远凑不齐的对。
+# 日序只能算到天，天里还得比行号——第六日的桌排在第二十四章，而唯一一条
+# 同日到手的信封出自第二十三章，只看"第六日"是放过的。
+_d6 = io.open(os.path.join(GAME, "11_day6.rpy"), encoding="utf-8").read()
+_desk_at = _d6.find("call bb_pair_desk")
+check("终章那张桌真的被 ch24 叫起（找不到 call＝挂了个没人调的屏）", _desk_at > 0)
+# 这里的 GIVE 是被窄化过的那一条（只认 `$ ev_give("…")`），拿去比偏移会把
+# python: 块里的到手看成"没在这天到手过"，偏移那道判据就悄悄放行。
+_first_give = {}
+for _m in re.finditer(r"ev_give\(\s*[\"']([a-z0-9_]+)[\"']\s*\)", _d6):
+    _first_give.setdefault(_m.group(1), _m.start())
+# 第六日目前只有一个脚本文件，所以偏移可以只在 11_day6 里比；多了第二个，
+# 这条判据就得改成跨文件排序——先把它钉成闸，别让它悄悄失真。
+_d6files = sorted(f for f, d in FILE_DAY.items() if d == 6)
+check("第六日只有一个脚本文件（%s）" % "／".join(_d6files), _d6files == ["11_day6.rpy"])
+late_pair = []
+for k in PAIRS:
+    for eid in k:
+        if eid not in sites:
+            late_pair.append(eid + " 没有来处")
+        elif sites[eid] > 6:
+            late_pair.append(eid + " 到手晚于第六日")
+        elif sites[eid] == 6 and _first_give.get(eid, 0) >= _desk_at:
+            late_pair.append(eid + " 在这张桌叫起之后才到手")
+check("每一对的两件，摆桌之前都已到手（迟 %d 处）" % len(late_pair), not late_pair)
+for x in sorted(set(late_pair)):
+    info(x)
+
+# 中间那一行只能来自数据层。屏上的**字符串字面量**里出现句号＝有人把正文
+# 写进了界面——那种句子 LINE_RE 看不见，正是上一轮堵掉的那道后门。
+# 只剥注释和 docstring：那是写给维护者的话，玩家看不到，拿它咬人是误报。
+_flow = io.open(os.path.join(GAME, "03_flow.rpy"), encoding="utf-8").read()
+_s0, _s1 = _screens.find("screen bb_pair("), _screens.find("screen bb_result(")
+_pair_body = _screens[_s0:_s1]
+
+
+def screen_lits(body):
+    body = re.sub(r'""".*?"""', "", body, flags=re.S)
+    body = "\n".join(l for l in body.split("\n") if not l.strip().startswith("#"))
+    return [m.group(1) for m in re.finditer(r'"((?:[^"\\]|\\.)+)"', body)
+            if m.group(1).strip()]
+
+
+_pstrings = screen_lits(_pair_body)
+check("并排屏真的在画界面（切到的字面量 %d 个，太少＝切片切歪，闸在空转）"
+      % len(_pstrings), len(_pstrings) >= 10)
+dots = [s for s in _pstrings if u"。" in s]
+check("并排屏上没有整句正文（带句号的字面量 %d 个）" % len(dots), not dots)
+for s in dots:
+    info("这句该回数据层：" + s[:40])
+check("并排屏只画 pair_line() 交来的那一行（弯引号包着的变量，不是屏上攒的句子）",
+      re.search(r'text\s+"“"\s*\+\s*line\s*\+\s+"”"', _pair_body) is not None
+      and "pair_line(" in _flow)
+# 自动播放必须自己走得出这一屏：少了那一句 timer，六日回归会挂死在桌上。
+check("并排屏给自动播放留了出口（bb_auto＋timer＋两件都点得出来）",
+      "if store.bb_auto" in _pair_body and "timer 0.05 action Return(" in _pair_body
+      and "BB_AUTO_PAIR" in _pair_body)
+# 攒 sel 的那一层和画界面的一层一样不能碰成绩：只查屏体，往 label 里塞一句
+# ev_give 就能绕过整道闸。
+_l0 = _flow.find("label bb_pair_desk")
+_pair_flow = _flow[_l0:_flow.find("\n# ----------------", _l0)]
+check("并排那一层真的被切进来了（截到的 label 太短＝切片切歪）", len(_pair_flow) > 200)
+smuggle = [w for w in ("ev_give", "have.add", "bb_silence", ".silence", "bullets",
+                       "persistent", "bb_silence_won", "renpy.save")
+           if w in _pair_body or w in _pair_flow]
+check("并排屏和它那一层不发证据、不动沉默数、不写存档（违 %d 处）" % len(smuggle), not smuggle)
+for w in smuggle:
+    info("这一屏不该碰：" + w)
+# 裁决词：这一屏不给答案，所以连判输赢的词都不许出现在玩家看到的那几行里。
+JUDGE = ("答对", "答错", "正确", "错误", "赢了", "输了", "得分", "分数",
+         "通过", "失败", "真相大白", "破案", "指认")
+_said_lit = set(_pstrings) | set(screen_lits(_pair_flow))
+said = [w for w in JUDGE if w in _said_lit or any(w in v for v in PAIRS.values())]
+check("并排表和并排屏里没有裁决词（出现 %d 个）" % len(said), not said)
+for w in said:
+    info("裁决词：" + w)
+
+# 行为：没写过的就是空；同一件不叫并排；写过的那一对真的有话。
+check("正文没并排写过的一对，中间是空", pair_line("invite", "lock") == "")
+check("同一件证据摆不成并排", pair_line("seal_rec", "seal_rec") == "")
+check("空槽位不吐句子", pair_line(None, "seal_rec") == "" and pair_line("seal_rec", "") == "")
+check("第二十三章那一并排真的有句子", bool(pair_line("seal_rec", "face_photo")))
+check("并排是双向的（摆的顺序不能影响结果）",
+      pair_line("face_photo", "seal_rec") == pair_line("seal_rec", "face_photo"))
+# 咬合：把一条并排句换成界面上随手写的话，上面那道句号闸必须 FAIL——
+# 不在这里改文件，只验"闸认得屏体"这件事：截到的屏体必须真的含两张便签的代码。
+check("并排屏真的画了两张便签（截空了＝切片切错，闸在空转）",
+      "EVIDENCE[_id].brief" in _pair_body and _pair_body.count("xsize 640") >= 2)
+
 print("")
 if fails:
     print("FAILED: %d" % len(fails))
