@@ -9,8 +9,8 @@
 
 # ---------------- 第十七章：大厅 · 第七席 ----------------
 label ch17:
-    call screen bb_card("第十七章", "第七席", "七只满的。那只空的，正对门口。", "十一月二十一日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十七章", "第七席", "七只满的。那只空的，正对门口。", "十一月二十一日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "我进大厅，先数了一遍人。"
     N "七个。"
     N "王剑昨夜，跟着雾，走出了庄园，没有回来。他没有出岛。小艇的缆绳，是从旧缆桩上解开的。没有人提这件事。"
@@ -56,8 +56,8 @@ label ch17:
 
 # ---------------- 第十八章：大厅 · 收杯 ----------------
 label ch18:
-    call screen bb_card("第十八章", "收杯", "那只正对门口的空杯，不在了。", "十一月二十一日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十八章", "收杯", "那只正对门口的空杯，不在了。", "十一月二十一日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "十一月二十一日，上午。我又下了一趟大厅。"
     N "八仙桌还在大厅里。日头斜斜地落进窗里。七只满着的杯子，在日头里亮着。"
     N "那只正对门口的空杯，不在了。"
@@ -88,21 +88,21 @@ label ch18:
     show spr_shen as talker at bb_talk_r
     SHEN "先生，有些留了很久的位置，到了该收的时候，就要收。"
     ME "为什么是今天收，他没有讲。"
-    call bb_search("bg_dining", "八仙桌 · 杯收走之后", TABLE_SPOTS_D5)
+    call bb_search("bg_hall_table", "八仙桌 · 杯收走之后", TABLE_SPOTS_D5)
     jump ch19
 
 
 # ---------------- 第十九章：待一夜 ----------------
 label ch19:
-    call screen bb_card("第十九章", "待一夜", "那只杯子，为什么是今天被收走的。", "十一月二十一日", BB_SNAP("bg_corridor.jpg"))
-    scene bg_corridor
+    call screen bb_card("第十九章", "待一夜", "那只杯子，为什么是今天被收走的。", "十一月二十一日", BB_SNAP("bg_bedroom_day.jpg"))
+    scene bg_bedroom_day
     N "我把自己关在房间里，很久。"
     ME "我一直在想，那只杯子，为什么是今天被收走的。"
     N "日头从窗缝里落进来，一条很窄。我躺着，听海浪一下一下打在礁石上。我想起沈南舟早先说过的那一句。他说东翼是他一个人待的地方。每年，他回来，待一夜。守。"
     ME "守到该收的时候。"
     N "那只空杯一直在那里。从这张桌子摆进大厅那天起。它等一个人来，把它倒满。那个人没有来。于是它就一直空着。"
     ME "而沈南舟，决定今年不再守下去了。"
-    scene bg_hall_ring
+    scene bg_hall_table
     N "傍晚，我回大厅，又数了一遍人。"
     N "八个。"
     N "王剑回来了。雾还没有散尽，他走了进来。没有人问他去了哪里。"
@@ -113,7 +113,7 @@ label ch19:
     ME "我忽然有点怕。不是怕那只杯子被收走了。是怕——如果它一直空着，是因为等的那个人不会再来了，那么现在收掉它，意思就是那个等待到头了。"
     ME "是那只空杯，在我的记忆里，一直是空的。还是在属于陈默的那一段记忆里，有人坐过那个位置。我记不清了。那不是我的记忆。"
     N "我没有去碰那张浅白的纸。"
-    scene bg_hall_ring
+    scene bg_hall_table
     show spr_su as talker at bb_talk_r
     SU "收掉那只杯子，守了这么多年，为什么偏偏是现在？"
     show spr_shen as talker at bb_talk_r

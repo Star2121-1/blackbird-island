@@ -340,6 +340,8 @@ init -1 python:
             """第一次听到这一句，才把跟着它的东西交给我。"""
             if self.i not in self.heard:
                 self.heard.add(self.i)
+                # 第一次听到这一句，说话的人才开口；重听不重播。
+                bb_voice_line(self.cur().text)
                 for g in self.cur().hears:
                     ev_give(g)
 

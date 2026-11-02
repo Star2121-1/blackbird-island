@@ -2,12 +2,13 @@
 """把 vibe_images/ 里的 AI 素材洗成 blackbird-vn/game/images/ 可用的图。
 
 背景：cover 裁切到 1920x1080，输出 jpg。
-立绘：边缘泛洪抠底（自适应品红，不假设纯色）+ 去溢色 + 软边，输出带 alpha 的 png。
+立绘：边缘泛洪抠底（自适应品红，不假设纯色）+ 去溢色 + 软边 + 按头高归一化，输出带 alpha 的 png。
 
 用法：python blackbird-vn/tools/build_assets.py
 """
 import glob
 import os
+import re
 import sys
 
 import numpy as np
@@ -19,14 +20,34 @@ SRC = os.path.join(ROOT, "vibe_images")
 DST = os.path.join(ROOT, "blackbird-vn", "game", "images")
 
 BG_TARGET = (1920, 1080)
-BG_KEYS = ["bg_hangzhou", "bg_dock", "bg_hall_long", "bg_hall_ring", "bg_study"]
+# 每一条 image bg_* 都得在这儿有名字，反过来也一样：
+# 漏了名的图不会被这条管线重建，删空 game/images/ 再跑一次就缺一块，
+# 而游戏里那一屏会静默退化成纯色占位——不报错，只是没人知道。
+BG_KEYS = ["bg_hangzhou", "bg_dock", "bg_hall_long", "bg_hall_ring", "bg_study",
+           "bg_east_wing", "bg_corridor", "bg_dining", "bg_shore",
+           "bg_hall_table", "bg_bridge_night", "bg_east_wing_room",
+           "bg_manor_ext", "bg_boathouse", "bg_bedroom_day"]
 SPR_KEYS = ["spr_shen", "spr_wang", "spr_zhao", "spr_fang", "spr_zhou",
             "spr_lin", "spr_su", "spr_me", "spr_gu"]
-SPR_HEIGHT = 1080
+# 立绘统一画布 + 统一头高。头高定标，人站同一条底线；画布定宽，头才落在席次上。
+SPR_CANVAS = (900, 1080)
+SPR_HEAD_H = 300
+# 剪影量不准的那几个：竖领把肩线推低（赵寒）、长发披到胸前（苏蔓），手工收一档。
+SPR_HEAD_FIX = {
+    "spr_su": 0.76,
+    "spr_zhao": 0.88,
+    "spr_fang": 1.10,
+}
 
 
 def latest(prefix):
-    hits = glob.glob(os.path.join(SRC, prefix + "_*.png"))
+    """按名取原图，必须整段对上：文件名是 `<key>_<时间戳>_<hash>.png`。
+    以前是 `prefix + "_*.png"` 一把通配，于是 bg_east_wing 把
+    bg_east_wing_room 那张也吞进来，还因为对方更新而赢了——
+    走廊那张被那间房悄悄盖掉，图上看不出来，只有并排摆着才看得出两张是同一间房。"""
+    pat = re.compile(re.escape(prefix) + r"_\d+_[0-9a-f]+\.png$")
+    hits = [p for p in glob.glob(os.path.join(SRC, prefix + "_*.png"))
+            if pat.match(os.path.basename(p))]
     if not hits:
         return None
     return max(hits, key=os.path.getmtime)
@@ -133,20 +154,65 @@ def fade_bottom(im, ramp):
     return Image.fromarray(arr, "RGBA")
 
 
+def measure_head(alpha, probe_h=512):
+    """剪影量头：返回 (头顶 y, 头高, 头心 x)，都在 alpha 的原生像素里。
+
+    原先每张立绘各自裁包围盒再统一拉到 1080 高，等于按"这张图里人占多满"定比例。
+    九张生成图的取景本来就不一致（有的到腰、有的只到胸），于是头高从 168 到 295
+    差一倍多，并排一站方廷像小孩、顾言笙像巨人。改成按头高定标，人才是同一间屋子里的人。
+
+    肩线取"宽度涨得最快的那一行"：头是细的，肩膀突然铺开，斜率峰值就是颈→肩。
+    先在固定 512 高上量再换算回原生——直接按原生高度量，五行的滑动窗和 10%／62% 的
+    搜索区间会随分辨率漂移，同一张图换个尺寸能差出一倍。
+    领子竖起来（赵寒）和长发披到胸前（苏蔓）会把这条线推低，所以留了 SPR_HEAD_FIX。
+    """
+    h0 = alpha.shape[0]
+    small = np.asarray(
+        Image.fromarray(alpha).resize((max(1, int(round(alpha.shape[1] * probe_h / float(h0)))),
+                                       probe_h), Image.LANCZOS))
+    mask = small > 40
+    roww = mask.sum(axis=1).astype(float)
+    sm = np.convolve(roww, np.ones(5) / 5.0, mode="same")
+    nz = np.nonzero(mask.sum(axis=1))[0]
+    if not nz.size:
+        return 0, 1, 0
+    top, bot = int(nz[0]), int(nz[-1])
+    span = max(1, bot - top)
+    d = np.diff(sm)
+    lo = max(1, top + int(span * 0.10))
+    hi = min(len(d) - 1, top + int(span * 0.62))
+    shoulder = lo + int(np.argmax(d[lo:hi])) if hi > lo else bot
+    band = np.nonzero(mask[top:shoulder + 1])[1]
+    cx = int((int(band.min()) + int(band.max())) / 2) if band.size else small.shape[1] // 2
+    k = h0 / float(probe_h)
+    return int(top * k), max(1, int((shoulder - top) * k)), int(cx * k)
+
+
 def build_sprite(key):
     src = latest(key)
     if not src:
         print("MISS spr", key)
         return False
     im = key_out(src)
-    box = im.getbbox()
-    im = im.crop(box) if box else im
-    s = SPR_HEIGHT / im.size[1]
-    im = im.resize((max(1, int(round(im.size[0] * s))), SPR_HEIGHT), Image.LANCZOS)
-    im = fade_bottom(im, 90)
+    a = np.asarray(im)[:, :, 3]
+    top, head_h, cx = measure_head(a)
+    head_h = int(round(head_h * SPR_HEAD_FIX.get(key, 1.0)))
+    s = SPR_HEAD_H / float(head_h)
+    w = max(1, int(round(im.size[0] * s)))
+    h = max(1, int(round(im.size[1] * s)))
+    im = im.resize((w, h), Image.LANCZOS)
+    canvas = Image.new("RGBA", SPR_CANVAS, (0, 0, 0, 0))
+    x = int(round(SPR_CANVAS[0] / 2.0 - cx * s))
+    y = SPR_CANVAS[1] - h
+    canvas.paste(im, (x, y), im)
+    head_top = y + int(round(top * s))
+    canvas = fade_bottom(canvas, 90)
     out = os.path.join(DST, key + ".png")
-    im.save(out, "PNG", optimize=True)
-    print("OK  ", key, im.size, "%d KB" % (os.path.getsize(out) // 1024))
+    canvas.save(out, "PNG", optimize=True)
+    warn = "  ← 顶出画布" if head_top < 0 else ("  ← 左右被切" if x < 0 or x + w > SPR_CANVAS[0] else "")
+    print("OK   ", key, "头高 %d→%d 头顶 y=%-5d 身宽 %d%s" %
+          (head_h, SPR_HEAD_H, head_top, w, warn),
+          "%d KB" % (os.path.getsize(out) // 1024))
     return True
 
 

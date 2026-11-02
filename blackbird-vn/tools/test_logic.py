@@ -29,7 +29,11 @@ fake.music = types.SimpleNamespace(play=lambda *a, **k: None,
                                    register_channel=lambda *a, **k: None)
 sys.modules.setdefault("renpy", fake)
 
-g = {"renpy": fake, "bb_sfx": lambda *a, **k: None}
+_noop = lambda *a, **k: None
+g = {"renpy": fake, "bb_sfx": _noop,
+     # 同上：hear_current 现在会顺手起一条人声，静态自检里它必须是哑的。
+     # 接线对不对不在这里查，在 test_content 的人声那一节（有引擎探针）。
+     "bb_voice_line": _noop, "bb_voice_stop": _noop}
 exec(compile(body, DATA, "exec"), g)
 for _n, _e in defaults:
     g[_n] = eval(_e, g)

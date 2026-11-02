@@ -17,7 +17,10 @@ init -1 python:
     config.screen_height = 1080
     config.has_sound = True
     config.has_music = True
-    config.has_voice = False
+    # 对质那五桌的发言有人声（tools/build_voice.py），所以 voice 这条 mixer
+    # 必须注册：has_voice 是 False 时 2 号声道被划给 sfx，人声就跟着"音效音量"走，
+    # 设置页里那一格人声音量滑杆管的是一条不存在的 mixer。
+    config.has_voice = True
     config.allow_skipping = True
     config.enter_transition = dissolve
     config.exit_transition = dissolve
@@ -31,6 +34,9 @@ init -1 python:
     # 变量名跟着混音器走：音效那条 mixer 叫 sfx，不叫 sound。
     config.default_music_volume = 0.5
     config.default_sfx_volume = 0.8
+    # 引擎给人声的默认是满格（1.0）。留一档余量：破绽句念出来时海浪还在底下走，
+    # 满格的人声会把"静得能听见茶凉了"那句抹掉。
+    config.default_voice_volume = 0.9
     config.thumbnail_width = 232
     config.thumbnail_height = 122
     # 窗口图标：一枚压在纸上的静默章，由 tools/build_icon.py 从现成素材拼出来，
@@ -41,6 +47,22 @@ init -1 python:
     config.window_icon = "icon.png"
     # 回放的容量：一屏一句，六日读下来要能翻回第一日。
     config.history_length = 600
+
+
+init 5 python:
+    # 引擎默认键位里有两格在这份卷宗里是纯粹的误触：
+    #   g / alt+g / shift+g ＝ choose_renderer，弹"要不要换个渲染器重启"，
+    #     玩家不知道按了什么、也答不上来该选哪个；
+    #   h / 鼠标中键 ＝ hide_windows，只藏得下带 hide 属性的屏。本书的对白页是手写
+    #     screen say，纸框无条件画（见 02_screens.rpy 里删掉"空行显示"那格的注释），
+    #     按一下只剩半张界面。
+    # 00keymap 在 init -1600 填表，所以清它要排在它后面。
+    # 引擎 8.5.3 把 alt/shift 的变体写在同一张表里（'alt_K_g'、'shift_K_g'），
+    # 没有第二张 alternate_keymap 要清。
+    # 留着不动的：Esc 菜单、Tab 跳过、按住 Ctrl 快进、`.` 快进到头、
+    # PageUp/Down 回看、F1 帮助、S 截图（README 已写）、v 朗读（设置里有同一格的开关）。
+    config.keymap["choose_renderer"] = []
+    config.keymap["hide_windows"] = []
 
 
 # ---------- 令牌：色 ----------
@@ -324,6 +346,7 @@ define BB = Character("黑鸟", who_color=bb_ink, what_color=bb_ink, what_font=b
 # 环境音就只能等下一章的扉页再钉回来，而章节卡不会重画：读档后这一章是静音的。
 default BB_AMB_NOW = {"file": None}
 default BB_PAGE_NOW = {"key": None}
+default BB_VOICE_NOW = {"file": None}
 
 # 素材一条录音都没有，全由 tools/build_audio.py 合成：网上找的"海浪"十有八九
 # 是纪录片片头，一放就把推理压成旅游宣传片。循环做在文件里（频谱法，包络只用
@@ -335,10 +358,14 @@ init python:
     # 28 张卡各写一个参数，不如在这里查一次表。
     BB_AMB_BY_BG = {
         "bg_dock": "amb_sea", "bg_shore": "amb_sea",
+        "bg_boathouse": "amb_sea", "bg_manor_ext": "amb_sea",
         "bg_corridor": "amb_wind",
-        "bg_east_wing": "amb_rain",
+        "bg_east_wing": "amb_rain", "bg_east_wing_room": "amb_rain",
+        "bg_bridge_night": "amb_rain",
         "bg_hall_long": "amb_room", "bg_hall_ring": "amb_room",
+        "bg_hall_table": "amb_room",
         "bg_dining": "amb_room", "bg_study": "amb_room",
+        "bg_bedroom_day": "amb_room",
         "bg_hangzhou": "amb_room",
     }
     BB_AMB_FILE = {
@@ -427,6 +454,33 @@ init python:
         BB_PAGE_NOW["key"] = None
 
     config.after_load_callbacks.append(bb_page_after_load)
+
+    # 对质的人声。映射表 BB_VOICE 由 tools/build_voice.py 生成在 15_voice.rpy，
+    # 键是台词原文——对质运行时手里只有 Statement，取到 text 就能查。
+    # 整桌发言都配，一句不落：只配破绽句的话，"这句有人开口"本身就是答案。
+    # 正文（说书那一路）不配，纸上的东西还是自己读。
+    def bb_voice_line(text):
+        # 自动播放的回归里不起：一秒翻三屏，人声永远在念上一句，
+        # 而且 voice 声道一起走，[AUTO] 那套时序就没法对着看了。
+        if bb_is_auto():
+            return
+        f = BB_VOICE.get(text)
+        if not f:
+            return
+        # 自己去重，不问引擎在放什么：淡入没起播时 get_playing() 会说"没在放"，
+        # 环境音那条踩过同一只坑（见 BB_AMB_NOW）。屏体重绘和预测都会再走一遍这里。
+        if BB_VOICE_NOW["file"] == f:
+            return
+        BB_VOICE_NOW["file"] = f
+        renpy.music.play(f, channel="voice", fadein=0.3)
+
+    def bb_voice_stop():
+        """收轮、结算、退出对质都要把这一路掐掉：人是坐着不动的，
+        话不能念到下一张卡片上去。"""
+        if BB_VOICE_NOW["file"] is None:
+            return
+        BB_VOICE_NOW["file"] = None
+        renpy.music.stop(channel="voice", fadeout=0.5)
 
 
 # ---------- 标题屏的一条判据 ----------

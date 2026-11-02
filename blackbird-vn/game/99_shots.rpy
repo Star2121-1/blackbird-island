@@ -4,6 +4,57 @@
 # 抓出来的图拼在 shots/contact.png，用 tools/make_contact.py 生成。
 
 label shot_all:
+    # 键位诚实闸门的料：把引擎真正生效的那几张表抄出来，给 tools/test_content.py 对。
+    # 闸门跑在纯 python 里，读不到运行中的 config.keymap——没有这份档，
+    # "g 已经废掉"这句话就只能靠人记住。
+    python:
+        import json as _json
+        import os as _os
+        _want = ["choose_renderer", "hide_windows", "dismiss", "game_menu", "toggle_skip",
+                 "skip", "fast_skip", "rollback", "rollforward", "help", "screenshot",
+                 "self_voicing", "focus_left", "focus_right", "button_select"]
+        _dump = dict((k, sorted(config.keymap.get(k, []))) for k in _want)
+        with open(_os.path.join(config.basedir, "shots", "_keymap.json"), "w", encoding="utf-8") as _f:
+            _json.dump(_dump, _f, ensure_ascii=False, sort_keys=True, indent=1)
+
+    # 配音管线的料：五轮发言表摊平出来，一句一条。
+    # tools/build_voice.py 按这份档整桌合成，闸门拿同一份档对账。
+    # 在这里抄，是因为发言表写在 init python 里，纯 python 的脚本读不到成品对象。
+    python:
+        import json as _json2
+        _lines = []
+        for _rn, _round in enumerate([ROUND1, ROUND2, ROUND3, ROUND4, ROUND5], start=1):
+            for _i, _s in enumerate(_round):
+                _lines.append({"id": "r%d_%d" % (_rn, _i), "round": _rn, "i": _i,
+                               "speaker": _s.speaker, "text": _s.text,
+                               "weak_to": _s.weak_to, "hit_kind": _s.hit_kind})
+        with open(_os.path.join(config.basedir, "shots", "_statements.json"), "w", encoding="utf-8") as _f:
+            _json2.dump(_lines, _f, ensure_ascii=False, indent=1)
+
+    # 人声这一路要真起播，不能只看文件在不在：
+    # 喂两句原文给 bb_voice_line，再问引擎 voice 声道上挂着什么。
+    # mixer 没注册、映射键和台词差一个字、mp3 路径写错——这里都是 None。
+    python:
+        import json as _json3
+        _vprobe = []
+        for _t in (ROUND1[0].text, ROUND5[len(ROUND5) - 1].text):
+            BB_VOICE_NOW["file"] = None
+            bb_voice_line(_t)
+            _vprobe.append({"text": _t[:18], "want": BB_VOICE.get(_t),
+                            "playing": renpy.music.get_playing(channel="voice")})
+        # 对质循环真正调用的是 Debate.hear_current，不是这个函数——
+        # 接线断了上面两行照样全过。用一只临时 Debate 走一遍那条路，
+        # 只塞台词、不带 grants/hears，免得把证据总账搅脏。
+        _d = Debate(SEATS, [Statement("王剑", ROUND1[0].text)])
+        BB_VOICE_NOW["file"] = None
+        _d.hear_current()
+        _vprobe.append({"hear_current": renpy.music.get_playing(channel="voice"),
+                        "want": BB_VOICE.get(ROUND1[0].text)})
+        bb_voice_stop()
+        _vprobe.append({"stop": renpy.music.get_playing(channel="voice")})
+        with open(_os.path.join(config.basedir, "shots", "_voice.json"), "w", encoding="utf-8") as _f:
+            _json3.dump(_vprobe, _f, ensure_ascii=False, indent=1)
+
     show screen main_menu
     pause 2.4
     $ _shot("01_menu")
@@ -156,6 +207,17 @@ label shot_all:
     pause 2.4
     $ _shot("20_debate_done")
     hide screen bb_debate
+
+    # 每张背景单独钉一张。BB_IMG 缺图不报错，只是悄悄换成纯色占位，
+    # 光查盘上有没有 jpg 还不够——得看引擎真把那一层画上了屏。
+    # 名单向引擎要：新增一张背景不用改这里。
+    python:
+        for _b in sorted(_n for _n in renpy.list_images() if _n.startswith("bg_")):
+            renpy.scene()
+            renpy.show(_b)
+            renpy.pause(0.4, hard=True)
+            _shot("30_" + _b)
+        renpy.scene()
 
     $ renpy.end_replay()
     $ renpy.quit()

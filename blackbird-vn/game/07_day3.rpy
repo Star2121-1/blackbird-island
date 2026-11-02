@@ -8,8 +8,8 @@
 
 # ---------------- 第十章：空杯 ----------------
 label ch10:
-    call screen bb_card("第十章", "空杯", "那只空杯还搁在原位，倒扣着。", "十一月十九日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十章", "空杯", "那只空杯还搁在原位，倒扣着。", "十一月十九日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "天亮了。"
     N "雾比夜里更厚，从敞着的窗漫进来，落在八仙桌上。"
     N "七只满着的杯子，是仆从每清早续的水。没有人争这件事。"
@@ -47,7 +47,7 @@ label ch10:
     SHEN "那只空着的，"
     SHEN "不用收。"
     N "他说的是那只杯。他站在桌的这一头，我站在雾里，看着那一头。"
-    scene bg_hall_ring
+    scene bg_hall_table
     N "我回到自己的位子上，坐下。"
     N "天亮了。雾还压着一层，落在那只空杯上，没有散。"
     jump ch11
@@ -55,8 +55,8 @@ label ch10:
 
 # ---------------- 第十一章：那个陈 ----------------
 label ch11:
-    call screen bb_card("第十一章", "那个陈", "桌上那一叠，落款一个“陈”。", "十一月十九日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十一章", "那个陈", "桌上那一叠，落款一个“陈”。", "十一月十九日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "雾退了一点。"
     N "赵寒回来了。这一次，他手里没有纸角。"
     N "他把二〇〇九那一叠从牛皮纸袋里取出来，摊在八仙桌上。"
@@ -101,8 +101,8 @@ label ch11:
 
 # ---------------- 第十二章：在场的人 ----------------
 label ch12:
-    call screen bb_card("第十二章", "在场的人", "三张纸并排，右边那张是空的。", "十一月十九日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十二章", "在场的人", "三张纸并排，右边那张是空的。", "十一月十九日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "大厅里，雾又薄了一层。"
     N "周亦安把三张纸并到一张桌上。"
     N "左边，位置C的勘查页。中间，那张立牌的记录。右边，一张空白的纸。"
@@ -150,14 +150,14 @@ label ch12:
     N "把那个“陈”看完了。"
     N "我没有再看它和我之间，是不是有别的什么。"
     N "对这件事，我一直在保护。保护到我连问，都不敢问。"
-    call bb_search("bg_hall_ring", "大厅 · 三张并排的纸", TABLE_SPOTS_D3)
+    call bb_search("bg_hall_table", "大厅 · 三张并排的纸", TABLE_SPOTS_D3)
     jump ch13
 
 
 # ---------------- 第十三章：那张脸 ----------------
 label ch13:
-    call screen bb_card("第十三章", "那张脸", "夜里，木匣开了，照片对着空杯。", "十一月十九日", BB_SNAP("bg_east_wing.jpg"))
-    scene bg_east_wing
+    call screen bb_card("第十三章", "那张脸", "夜里，木匣开了，照片对着空杯。", "十一月十九日", BB_SNAP("bg_east_wing_room.jpg"))
+    scene bg_east_wing_room
     N "那天夜里，沈南舟进了东翼。"
     N "二十年来，他每年回来，待一夜。但这一夜，他不是待。"
     N "他取回一只木匣。打开。"
@@ -166,7 +166,7 @@ label ch13:
     N "赵寒站在原地，没有动。"
     ZHAO "就是它。"
     N "他没有说下去。"
-    scene bg_hall_ring
+    scene bg_hall_table
     show spr_shen as talker at bb_talk_r
     N "沈南舟没有说那是谁。他把照片放在八仙桌上，正对着那只空杯。"
     SHEN "二〇〇九年，他就不在了。"
@@ -190,7 +190,7 @@ label ch13:
     N "那张脸在灯下很旧。我盯着它，几乎要以为是我。"
     N "不是我。是我记不清了。"
     N "我把这句话咽了回去。"
-    call bb_search("bg_hall_ring", "大厅 · 木匣摊开之处", FACE_SPOT)
+    call bb_search("bg_hall_table", "大厅 · 木匣摊开之处", FACE_SPOT)
     N "木匣还摊在矮木几上。主人把几面清空，说：第三遍。"
     call bb_debate_run(round3)
     call bb_result_card(round3)

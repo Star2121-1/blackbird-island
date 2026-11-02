@@ -7,11 +7,17 @@ test_logic.py 验的是"一条发言链算得对不对"，这里验的是"整本
 - 每一轮的破绽句，所用证据必须在那一夜之前就已经可拿到（拿不到就打不破，是坑玩家）。
 - 热点表里的每个 id 都要有对应的 spot_ 标签；定义了没人调的 spot_ 标签是死内容。
 - 五轮的沉默总数、句数、破绽数打出来，README 里那些数字要对着它。
+- 键位三方对齐：引擎真正生效的 config.keymap（截图脚本落的档）、游戏内帮助页、README。
+- 配音对齐：对质每一句发言都要有映射 + 落地的 mp3，键不许过期、文件不许错挂；README
+  里那句"配了几句、什么音色"要对着发言表，不对就是宣传。
+- 图对齐：每张注册的背景／立绘要在洗图清单里、盘上要有文件、剧本里要有人引用、
+  章节卡钉的翻拍要存在、而且每张背景都得有环境音。
 
     python blackbird-vn/tools/test_content.py
 """
 import glob
 import io
+import json
 import os
 import re
 import sys
@@ -454,6 +460,229 @@ for fn in sorted(os.listdir(GAME)):
 check("玩家可见文本没有直引号／『』（发现 %d 处）" % len(bad_quote), not bad_quote)
 for fn, i, lit in bad_quote[:12]:
     info("%s:%d %s" % (fn, i, lit[:40]))
+
+
+# ---------------- 键位诚实 ----------------
+# 帮助页和 README 各写一份键位，引擎里还有一份 config.keymap。三方对不上，
+# 玩家照着按就按出错事——这一轮之前 g 换渲染器、h 半张界面就没人知道。
+# config.keymap 只有跑起来才有，所以料由截图脚本（99_shots.rpy）落一份
+# shots/_keymap.json 出来；没有这份档就 FAIL，别拿过期包对着旧事实盖章。
+KEYMAP_DUMP = os.path.join(HERE, "shots", "_keymap.json")
+if not os.path.exists(KEYMAP_DUMP):
+    check("有 shots/_keymap.json（先跑一遍截图脚本）", False)
+else:
+    km = json.load(io.open(KEYMAP_DUMP, encoding="utf-8"))
+    check("键位表抄全了（%d 张）" % len(km), len(km) >= 15)
+    for act in ("choose_renderer", "hide_windows"):
+        check("%s 已废掉（还绑在 %s 上）" % (act, km.get(act)), not km.get(act))
+    for act in ("dismiss", "game_menu", "toggle_skip", "skip", "rollback",
+                "rollforward", "help", "screenshot", "self_voicing"):
+        check("%s 还活着" % act, bool(km.get(act)))
+
+    help_src = io.open(os.path.join(GAME, "02_screens.rpy"), encoding="utf-8").read()
+    # 两栏都算：PageDown、"截图" 这类写在说明里而不是键名里的，也要两边对齐。
+    keys_on_help = "".join(a + b for a, b in
+                           re.findall(r'use bb_key\("([^"]*)", "([^"]*)"\)', help_src))
+    readme = io.open(os.path.join(HERE, "README.md"), encoding="utf-8").read()
+    tbl = readme.split("## 键位")[1].split("\n##")[0] if "## 键位" in readme else ""
+    check("README 有键位表", len(tbl) > 40)
+    # 两边都得写到的那些键。用中文词而不是字母，免得 "S" 到处都能匹配上。
+    for word in ("Esc", "Tab", "Ctrl", "F1", "PageUp", "PageDown", "句点", "截图"):
+        check("「%s」帮助页和 README 都写了" % word,
+              word in keys_on_help and word in tbl)
+
+# ---------------- 配音诚实 ----------------
+# 对质整桌发言都进 voice 通道，台词原文当键。这件事有三个地方会烂：
+#   台词改了没重跑 build_voice → 键和发言表对不上，那一句静悄悄没有声音；
+#   mp3 没生成／被误删 → 映射在、文件不在，玩家按到就是静音；
+#   文档写"配了哪几句／几副嗓子" → 和引擎不一致就是宣传。
+# 料还是那份 shots/_statements.json（引擎里摊平的五轮发言表）。
+STMT_DUMP = os.path.join(HERE, "shots", "_statements.json")
+VOICE_RPY = os.path.join(GAME, "15_voice.rpy")
+VOICEDIR = os.path.join(GAME, "voice")
+if not os.path.exists(STMT_DUMP):
+    check("有 shots/_statements.json（先跑一遍截图脚本）", False)
+elif not os.path.exists(VOICE_RPY):
+    check("有 game/15_voice.rpy（跑 tools/build_voice.py）", False)
+else:
+    with io.open(STMT_DUMP, encoding="utf-8") as f:
+        _rows = json.load(f)
+    check("发言表非空（%d 句）" % len(_rows), len(_rows) > 0)
+    # 键是原文：两句撞在一起就只有一条声音，后一句永远静着。
+    check("对质台词不重样（重样＝共用一条 mp3，另一句静掉）",
+          len(set(r["text"] for r in _rows)) == len(_rows))
+
+    vsrc = io.open(VOICE_RPY, encoding="utf-8").read()
+    pairs = re.findall(r'^\s*("(?:[^"\\]|\\.)*")\s*:\s*"(voice/[^"]+)",\s*$', vsrc, re.M)
+    voice_map = {}
+    for k, v in pairs:
+        voice_map[json.loads(k)] = v
+    check("映射表非空（%d 条）" % len(voice_map), len(voice_map) > 0)
+
+    want = dict((r["text"], "voice/%s.mp3" % r["id"]) for r in _rows)
+    missing = sorted(set(want) - set(voice_map))
+    stale = sorted(set(voice_map) - set(want))
+    check("整桌发言都在映射里（漏 %d 条）" % len(missing), not missing)
+    for m in missing:
+        info("漏配：" + m[:24])
+    check("映射里没有过期键（%d 条：台词改过就要重跑 build_voice）" % len(stale), not stale)
+    for m in stale:
+        info("过期键：" + m[:24])
+    # 文件名也要对上 id：只查"有没有文件"的话，r1_1 的内容挂到 r5_7 上照样过。
+    wrong = sorted(t for t, f in voice_map.items() if want.get(t) != f)
+    check("每一条都落在自己的文件上（错位的 %d 条）" % len(wrong), not wrong)
+    for t in wrong:
+        info("错位：" + t[:24] + " → " + voice_map[t])
+
+    for f in sorted(set(voice_map.values())):
+        p = os.path.join(GAME, f.replace("/", os.sep))
+        if not os.path.exists(p):
+            check("文件在场 %s" % f, False)
+        elif os.path.getsize(p) < 2000:
+            check("%s 小得不像一条语音（%d 字节）" % (f, os.path.getsize(p)), False)
+    check("语音文件全在（%d 条）" % len(voice_map),
+          all(os.path.exists(os.path.join(GAME, f.replace("/", os.sep)))
+              for f in voice_map.values()))
+    # 孤声：目录里躺着没人引用的文件，包白背一份。
+    onfile = set("voice/" + n for n in os.listdir(VOICEDIR) if n.endswith(".mp3"))
+    check("voice/ 里没有没人引用的文件（多 %d 个）" % len(onfile - set(voice_map.values())),
+          not (onfile - set(voice_map.values())))
+
+    # 引擎侧：mixer 没注册的话，人声跟着"音效音量"走，设置页那一格是假的。
+    settings = io.open(os.path.join(GAME, "00_settings.rpy"), encoding="utf-8").read()
+    check("config.has_voice 打开了", "config.has_voice = True" in settings)
+    screens = io.open(os.path.join(GAME, "02_screens.rpy"), encoding="utf-8").read()
+    check('设置页有人声音量那一格', 'Preference("voice volume")' in screens)
+    # 自动播放的回归不能带人声：一秒三屏，念的永远是上一句。
+    _vl = settings[settings.find("def bb_voice_line"):settings.find("def bb_voice_line") + 400]
+    check("自动播放不起人声", "if bb_is_auto():" in _vl)
+    # 收轮要掐断：结算页接着说话，桌上还挂着上一句的尾巴不像话。
+    flow = io.open(os.path.join(GAME, "03_flow.rpy"), encoding="utf-8").read()
+    check("对质收轮时掐断人声", "bb_voice_stop()" in flow)
+
+    # 引擎侧的凭据：文件在场不等于起得了播——mixer 没注册、路径写错，
+    # 玩家那边就是一句话没有声音。这份档由截图脚本喂两句原文探出来。
+    VPROBE = os.path.join(HERE, "shots", "_voice.json")
+    if not os.path.exists(VPROBE):
+        check("有 shots/_voice.json（人声起播的凭据，重跑截图脚本）", False)
+    else:
+        with io.open(VPROBE, encoding="utf-8") as f:
+            vp = json.load(f)
+        plays = [x for x in vp if "playing" in x]
+        check("探针句数对得上（%d 句）" % len(plays), len(plays) == 2)
+        for x in plays:
+            check("「%s」挂上了 voice 声道" % x["text"], x.get("playing") == x.get("want"))
+        # 对质循环走的是 Debate.hear_current 那条线，不是直接调函数——接线断在这里
+        # 上面两条照样全过，所以这份档里必须有一条经过 hear_current 的探针。
+        hc = [x for x in vp if "hear_current" in x]
+        check("hear_current 那条路也起得了播", bool(hc) and hc[0]["hear_current"] == hc[0]["want"])
+        stops = [x for x in vp if "stop" in x]
+        check("bb_voice_stop 收得干净", bool(stops) and stops[-1]["stop"] is None)
+
+    _rd = io.open(os.path.join(HERE, "README.md"), encoding="utf-8").read()
+    sec = _rd.split("## 配音")[1].split("\n##")[0] if "## 配音" in _rd else ""
+    check("README 有配音这一节", len(sec) > 40)
+    check("README 写的句数和发言表一致（%d 句）" % len(_rows),
+          ("%d 句" % len(_rows)) in sec)
+    check("README 说清了是 edge-tts 神经音色", "edge-tts" in sec)
+    check("README 说了共用几副嗓子", ("副嗓子" in sec) or ("副音色" in sec))
+    check("README 说了整桌都配、人声不标记破绽", "不标记" in sec or "一句不漏" in sec)
+
+# ---------------- 图 ----------------
+# 一张背景有五条命：原图在、被管线洗过、注册在、有人引用、章节卡钉它时有环境音。
+# 断在哪一条都是静默的：
+#   漏在 BG_KEYS 里 → 删空 game/images/ 重跑管线就少一块，那一屏退成纯色占位；
+#   注册了没人引用 → 包里白背一张图（lint 也不报，因为 image 语句本身就是"用到"）；
+#   卡片翻拍不在 BB_AMB_BY_BG 里 → 那一章没有海浪也没有风声，卡片照开。
+imgs_src = io.open(os.path.join(GAME, "04_images.rpy"), encoding="utf-8").read()
+BG_REG = dict(re.findall(r'^image (bg_[a-z0-9_]+) = BB_IMG\("([a-z0-9_]+)\.jpg"',
+                         imgs_src, re.M))
+SPR_REG = dict(re.findall(r'^image (spr_[a-z0-9_]+) = BB_PLAIN\("([a-z0-9_]+)\.png"',
+                          imgs_src, re.M))
+check("注册了背景（%d 张）" % len(BG_REG), len(BG_REG) >= 15)
+check("注册了立绘（%d 张）" % len(SPR_REG), len(SPR_REG) >= 9)
+
+assets = io.open(os.path.join(HERE, "tools", "build_assets.py"), encoding="utf-8").read()
+def _list(name):
+    m = re.search(name + r" = \[(.*?)\]", assets, re.S)
+    return re.findall(r'"([a-z0-9_]+)"', m.group(1)) if m else []
+check("每张注册的背景都在洗图清单里（漏 %d 张）"
+      % (len(set(BG_REG.values())) - len(set(BG_REG.values()) & set(_list("BG_KEYS")))),
+      set(BG_REG.values()) <= set(_list("BG_KEYS")))
+check("洗图清单里没有没注册的背景（多 %d 张）"
+      % (len(set(_list("BG_KEYS"))) - len(set(BG_REG.values()))),
+      set(_list("BG_KEYS")) <= set(BG_REG.values()))
+check("每张注册的立绘都在洗图清单里",
+      set(SPR_REG.values()) <= set(_list("SPR_KEYS")))
+
+# 素材真在盘上：BB_IMG 缺图就换占位，不报错，所以只能自己问文件系统。
+for key, fname in sorted(BG_REG.items()):
+    check("盘上有 images/%s.jpg" % fname,
+          os.path.exists(os.path.join(GAME, "images", fname + ".jpg")))
+for key, fname in sorted(SPR_REG.items()):
+    check("盘上有 images/%s.png" % fname,
+          os.path.exists(os.path.join(GAME, "images", fname + ".png")))
+
+used = set()
+for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    if os.path.basename(p) in ("04_images.rpy", "00_settings.rpy"):
+        continue          # 注册表自己、环境音表——都不算"这一屏用了它"
+    used |= set(re.findall(r"\b(bg_[a-z0-9_]+|spr_[a-z0-9_]+)\b",
+                           io.open(p, encoding="utf-8").read()))
+dead = sorted(k for k in list(BG_REG) + list(SPR_REG) if k not in used)
+check("注册的图全被引用（没人用的 %d 张）" % len(dead), not dead)
+for k in dead:
+    info("没人引用：" + k)
+orphan = sorted(k for k in used if k not in BG_REG and k not in SPR_REG)
+check("剧本里没有未注册的图（%d 个：写错名就是一片纯色）" % len(orphan), not orphan)
+for k in orphan:
+    info("未注册：" + k)
+
+amb_src = io.open(os.path.join(GAME, "00_settings.rpy"), encoding="utf-8").read()
+amb = dict(re.findall(r'"(bg_[a-z0-9_]+)":\s*"(amb_[a-z0-9_]+)"',
+                      amb_src[amb_src.find("BB_AMB_BY_BG"):]))
+noamb = sorted(k for k in BG_REG if k not in amb)
+check("每张背景有环境音（漏 %d 张：钉它的那一章静音）" % len(noamb), not noamb)
+for k in noamb:
+    info("没有环境音：" + k)
+check("环境音表里没有多余的名（%d 个）"
+      % (len(amb) - len(set(amb) & set(BG_REG))), set(amb) <= set(BG_REG))
+# 章节卡钉的翻拍：文件名写错，BB_SNAP 判缺图就不钉——卡片少一张照片，谁也不说。
+_all_rpy = "".join(io.open(p, encoding="utf-8").read()
+                   for p in glob.glob(os.path.join(GAME, "*.rpy")))
+for snap in sorted(set(re.findall(r'BB_SNAP\("([a-z0-9_]+)\.jpg"\)', _all_rpy))):
+    check("卡片翻拍在盘上：%s.jpg" % snap,
+          os.path.exists(os.path.join(GAME, "images", snap + ".jpg")))
+
+# 落屏凭据：截图脚本会把每张注册背景单独拍一张（30_bg_*.png）。
+# 上面那一条只证明 jpg 在盘上；BB_IMG 里那条 loadable 判定、纱和颗粒的合成次序，
+# 都要引擎跑一遍才算数——缺图是静默退化，不报错，只是那一屏变成纯色。
+_plates = glob.glob(os.path.join(HERE, "shots", "30_bg_*.png"))
+if not _plates:
+    check("有 shots/30_bg_*.png（每张背景的落屏凭据，重跑截图脚本）", False)
+else:
+    on_screen = set(os.path.basename(p)[3:-4] for p in _plates)
+    noshot = sorted(set(BG_REG) - on_screen)
+    check("每张注册背景都真的落了屏（缺 %d 张）" % len(noshot), not noshot)
+    for k in noshot:
+        info("没落屏：" + k)
+    stale_shot = sorted(on_screen - set(BG_REG))
+    check("落屏图里没有没注册的名（%d 张）" % len(stale_shot), not stale_shot)
+    for k in stale_shot:
+        info("多出来：" + k)
+
+# 证据图标：EV_ICON 的值就是文件名，写错一个，图鉴开到那一条就当场异常。
+_screens = io.open(os.path.join(GAME, "02_screens.rpy"), encoding="utf-8").read()
+_ev_icon = dict(re.findall(r'^\s*"([a-z0-9_]+)":\s*"([a-z_]+)",',
+                           _screens[_screens.find("EV_ICON = {"):
+                                    _screens.find("EV_ICON = {") + 2000], re.M))
+check("证据图标表非空（%d 条）" % len(_ev_icon), len(_ev_icon) >= 20)
+_ui = os.path.join(GAME, "images", "ui")
+noic = sorted(v for v in set(_ev_icon.values())
+              if not os.path.exists(os.path.join(_ui, "ic_%s.png" % v)))
+check("每一条证据的图标都在盘上（缺 %d 种）" % len(noic), not noic)
+for v in noic:
+    info("缺图标：ic_%s.png" % v)
 
 print("")
 if fails:

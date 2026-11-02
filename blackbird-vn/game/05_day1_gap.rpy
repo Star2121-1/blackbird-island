@@ -67,7 +67,10 @@ label ch4:
     show spr_su as talker at bb_talk_r
     N "苏蔓从书架最里侧的暗格里抽出一个牛皮纸袋。"
     N "我打开纸袋，里面是一叠照片。边缘已经泛黄，但保存得相当完好。"
+    scene bg_bridge_night
     N "第一张照片上是一座桥——临东海大桥，雨夜，路灯在积水的路面上投下破碎的光。"
+    scene bg_study
+    show spr_su as talker at bb_talk_r
     N "第四张照片上，有一个人。他蹲在草丛里，背对着镜头，手里似乎在挖什么。"
     SU "这是谁？"
     N "因为我的目光落在照片右下角印刷的日期戳上："

@@ -8,8 +8,8 @@
 
 # ---------------- 第十四章：名单 ----------------
 label ch14:
-    call screen bb_card("第十四章", "名单", "第八个名字，被墨擦掉了。", "十一月二十日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十四章", "名单", "第八个名字，被墨擦掉了。", "十一月二十日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "雾退了一整夜。"
     N "十一月二十日，清晨。大厅里，那张脸还搁在桌上，正对那只空杯。没有人动它。"
     N "林晚把卷宗里那张封装记录放在桌角。"
@@ -38,8 +38,8 @@ label ch14:
 
 # ---------------- 第十五章：见证 ----------------
 label ch15:
-    call screen bb_card("第十五章", "见证", "复核这件事，本身，就是一次到场。", "十一月二十日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十五章", "见证", "复核这件事，本身，就是一次到场。", "十一月二十日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "大厅里，雾快散了。赵寒站了起来。他没有看任何人。"
     show spr_zhao as talker at bb_talk_r
     ZHAO "我父亲查到的那一半，我记下来了。"
@@ -76,20 +76,20 @@ label ch15:
     show spr_su as talker at bb_talk_r
     SU "还能打开的，只有两张。名单。还有那个绣标——周亦安补拍的那一张，我存过。"
     N "那阵风暴，还绞断了沿礁石埋着的那根信号缆——埋得浅，线皮磨毛了。一绞，就断了。岛上与外界唯一的连接，断了。从那天起，黑鸟岛和大陆，再无连接。"
-    scene bg_hall_ring
+    scene bg_hall_table
     N "没有人多问一句。外面什么时候会注意到，没有人说得清。"
     SU "一通电话，都打不出去了。八个人。"
     call bb_search("bg_shore", "礁石 · 退潮之后", SHORE_SPOTS_D4)
-    scene bg_hall_ring
+    scene bg_hall_table
     N "雾散尽了。大厅里，只剩那一张摊开的纸，和那一栏空的。"
-    call bb_search("bg_hall_ring", "大厅 · 摊开的那张纸", TABLE_SPOTS_D4)
+    call bb_search("bg_hall_table", "大厅 · 摊开的那张纸", TABLE_SPOTS_D4)
     jump ch16
 
 
 # ---------------- 第十六章：空栏 ----------------
 label ch16:
-    call screen bb_card("第十六章", "空栏", "一栏空白，有两种可能。", "十一月二十日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第十六章", "空栏", "一栏空白，有两种可能。", "十一月二十日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "大厅里，雾散尽了。日头落进窗里。"
     show spr_fang as talker at bb_talk_r
     N "方廷终于开了口。他站起来，走到桌前，用两根手指，点了点那一栏空白。"
@@ -115,7 +115,7 @@ label ch16:
     N "我没有接话。"
     scene bg_study
     N "那张纸在日头里，空着那一栏，像一道没有底的缺口。"
-    scene bg_hall_ring
+    scene bg_hall_table
     N "赵寒忽然直起身。"
     ZHAO "十二米。我在桥的照片上数的。十八步。"
     ZHAO "摆一具尸体，要三十秒。数，是我父亲的报告里写的。剩下的至少四十六分半，他没有离开桥。"

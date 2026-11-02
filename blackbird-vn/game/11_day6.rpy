@@ -9,8 +9,8 @@
 
 # ---------------- 第二十章：十年 ----------------
 label ch20:
-    call screen bb_card("第二十章", "十年", "已经过去了五天。", "十一月二十二日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第二十章", "十年", "已经过去了五天。", "十一月二十二日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "大厅里，雾没有散。日头移过了窗。"
     ME "我坐在八仙桌前。桌角那一截浅白的纸还在。纸上，一个浅淡的杯印。"
     ME "我一直在想沈南舟早先说过的那一句。他说，十年前，他的儿子死于一起交通事故。肇事者逃逸。案件至今没有破。"
@@ -49,8 +49,8 @@ label ch20:
 
 # ---------------- 第二十一章：收进来的东西 ----------------
 label ch21:
-    call screen bb_card("第二十一章", "收进来的东西", "游戏，到这里为止。", "十一月二十二日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第二十一章", "收进来的东西", "游戏，到这里为止。", "十一月二十二日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "夜，深了。大厅里，人，散得只剩几个。"
     N "沈南舟站在八仙桌前。那一截浅白的纸还压在那儿。"
     show spr_shen as talker at bb_talk_r
@@ -80,8 +80,8 @@ label ch21:
 
 # ---------------- 第二十二章：落款 ----------------
 label ch22:
-    call screen bb_card("第二十二章", "落款", "有些落款，是落不回去的。", "十一月二十二日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第二十二章", "落款", "有些落款，是落不回去的。", "十一月二十二日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "清晨。日头落进大厅。"
     N "沈南舟回来了。他没有把那截浅白的纸拿出来。他把二〇〇九那张封装记录，重新摊在八仙桌上。那一栏，空的，复核人。"
     N "苏蔓没有翻开她那本合上的笔记本。"
@@ -107,8 +107,8 @@ label ch22:
 
 # ---------------- 第二十三章：那张脸，正对门口 ----------------
 label ch23:
-    call screen bb_card("第二十三章", "那张脸，正对门口", "他仍旧没有把名字给出来。", "十一月二十二日", BB_SNAP("bg_hall_ring.jpg"))
-    scene bg_hall_ring
+    call screen bb_card("第二十三章", "那张脸，正对门口", "他仍旧没有把名字给出来。", "十一月二十二日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "日头移过了窗，又移过了桌。"
     N "大厅里，人一个一个退开，让出那张八仙桌。"
     N "沈南舟站在桌后。他没有坐。"
@@ -151,11 +151,13 @@ label ch23:
 # ---------------- 第二十四章：证词（终章） ----------------
 label ch24:
     call screen bb_card("第二十四章", "证词（终章）", "筛子到我手里了。", "十一月二十二日", BB_SNAP("bg_shore.jpg"))
-    scene bg_shore
+    scene bg_hall_table
     N "夜，落进大厅。雾没有散。"
     N "沈南舟的那只信封，没有留在大厅里。"
     N "八仙桌还在。七只杯子，都满着。那只空着的位置，收走了。那一截浅白的纸，也不在了。"
+    scene bg_boathouse
     N "码头上，渡轮六点不返。小艇，也不在了。这座岛，今夜，留住我们。"
+    scene bg_hall_table
     show spr_me as talker at bb_talk_r
     ME "我坐在那张桌子前。"
     ME "我没有动。"

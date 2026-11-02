@@ -168,8 +168,8 @@ label ch8:
 
 # ---------------- 第九章：摆好的尸体 ----------------
 label ch9:
-    call screen bb_card("第九章", "摆好的尸体", "八只杯，一只空着，自始至终没人碰。", "十一月十八日", BB_SNAP("bg_dining.jpg"))
-    scene bg_dining
+    call screen bb_card("第九章", "摆好的尸体", "八只杯，一只空着，自始至终没人碰。", "十一月十八日", BB_SNAP("bg_hall_table.jpg"))
+    scene bg_hall_table
     N "我进大厅的时候，刚过九点。环形沙发撤掉了，换成一张八仙桌。"
     N "桌上摆着八只杯。名单上，八个名字，一人一只。"
     N "七只满着的，正着放；空的那只，倒扣在正对门的位置。"
@@ -233,7 +233,7 @@ label ch9:
     # 而当日那一格搜索也只能把纸写在桌上——桌上此刻已经没有纸了。
     N "沈南舟没有追问。他把折好的纸放进桌下的抽屉里，抽屉合上时，发出一声很轻的响。"
     N "那只空着的杯子，自始至终，没有人去碰。"
-    call bb_search("bg_dining", "八仙桌 · 今天到这里", TABLE_SPOTS_D2)
+    call bb_search("bg_hall_table", "八仙桌 · 今天到这里", TABLE_SPOTS_D2)
     N "杯子收回去了。规则没有收回：举起一条证据，抵在一句话上。"
     call bb_debate_run(round2)
     call bb_result_card(round2)

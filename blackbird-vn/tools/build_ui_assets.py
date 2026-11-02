@@ -490,6 +490,35 @@ def build_icons():
     d.ellipse([10, 10, 38, 38], outline=PENCIL + (255,), width=2)
     finish(im, "ic_empty.png")
 
+    # ---- 证据专用：这四件原来都借通用图标，图鉴上八条里四条长一个样 ----
+    # 缆绳：盘一圈，绳头从圈里挑出来（旧缆桩上解开的那根）
+    im, d = ic()
+    d.ellipse([12, 24, 34, 40], outline=col + (255,), width=STROKE)
+    line(d, [16, 27, 12, 16, 20, 8], col)
+    finish(im, "ic_rope.png")
+
+    # 水渍：地上一摊，上面两滴还在落
+    im, d = ic()
+    d.ellipse([8, 28, 40, 41], outline=col + (255,), width=STROKE)
+    line(d, [19, 9, 16, 17], col, 2)
+    line(d, [30, 13, 27, 21], col, 2)
+    finish(im, "ic_stain.png")
+
+    # 照片：白边相框里一座山一轮日（书房那四张）
+    im, d = ic()
+    line(d, [8, 12, 40, 12, 40, 36, 8, 36, 8, 12], col)
+    d.ellipse([14, 17, 21, 24], outline=col + (255,), width=2)
+    line(d, [11, 33, 21, 23, 27, 29, 33, 22, 38, 33], col, 2)
+    finish(im, "ic_photo.png")
+
+    # 烟灰：半截烟横搁、滤口一道圈，下面三粒灰（袖口那一截）
+    im, d = ic()
+    line(d, [8, 20, 34, 20], col, 4)
+    line(d, [27, 16, 27, 24], col, 2)
+    for x, y in [(13, 30), (22, 36), (30, 31)]:
+        d.rectangle([x, y, x + 3, y + 3], fill=col + (255,))
+    finish(im, "ic_ash.png")
+
 
 # ---------------- 席位图 ----------------
 def seat_positions(n=8, cx=0.5, cy=0.47, rx=0.285, ry=0.200):

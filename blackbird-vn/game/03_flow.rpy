@@ -92,6 +92,7 @@ label ch1:
     ME "当年真相。"
     N "这个词像一根细小的钩子，拽住了我的某种记忆。不是具体的画面，而是一种模糊的、几乎被时间磨平的痛感。"
     ME "我是陈默。自由撰稿人。三十一岁，单身，独居杭州。"
+    scene bg_manor_ext
     N "渡轮靠岸时，我看见一座白色的建筑物矗立在礁石之上。此刻它灯火通明，像黑暗中一只睁开的眼睛。"
     N "庄园门口站着一个人。"
     show spr_shen as talker at bb_talk_r
@@ -99,6 +100,7 @@ label ch1:
     ME "是。"
     SHEN "我是沈南舟，这栋庄园的主人。欢迎你来。"
     N "他伸出手，我握住。"
+    scene bg_dock
     call bb_search("bg_dock", "码头 · 下船之前", DOCK_SPOTS)
     ME "其他人呢？"
     SHEN "都在里面。请进。我简要介绍一下——今晚到场的，一共八个人。你们七个，加上我。"
@@ -421,6 +423,9 @@ label bb_debate_run(rt):
             $ rt.jump_to(arg)
         elif act == "end":
             $ rt.end()
+    # 轮一收，人声就得断在这行：结算页接着往下说，桌上的人还挂着上一句的尾巴
+    # 不像话。自动播放那条路本来没起过人声，这里是一记空手。
+    $ bb_voice_stop()
     return
 
 

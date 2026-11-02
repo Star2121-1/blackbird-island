@@ -72,13 +72,13 @@ init python:
         "blank_col": "empty",
         "cable_cut": "warn",
         "bridge_count": "clock",
-        "rope_stale": "warn",
+        "rope_stale": "rope",
         "cup_mark": "empty",
         "note_hand": "pen",
         "lock_half": "lock",
-        "wet_trail": "page",
-        "photos": "page",
-        "cigarette": "warn",
+        "wet_trail": "stain",
+        "photos": "photo",
+        "cigarette": "ash",
         "plaque_2013": "roster",
         "envelope": "envelope",
     }
@@ -229,7 +229,10 @@ screen quick_menu():
             textbutton "跳过" action Skip() alternate Skip(fast=True, confirm=True) style "bb_qk" text_style "bb_qk_text"
             textbutton "设置" action ShowMenu("preferences") style "bb_qk" text_style "bb_qk_text"
             textbutton "图例" action ShowMenu("bb_legend") style "bb_qk" text_style "bb_qk_text"
-            textbutton "存" action ShowMenu("save") style "bb_qk" text_style "bb_qk_text"
+            # 这一格开的是存档位那一页，不是"按一下就走"的快速存档——引擎 8.5.3 的
+            # 默认键位里根本没有 quick_save，写个"存"字会让人以为按一下就成了。
+            # 和其余六个统一成两个字，实测芯片宽度也从 58 回到 83。
+            textbutton "存档" action ShowMenu("save") style "bb_qk" text_style "bb_qk_text"
             textbutton "菜单" action ShowMenu("navigation") style "bb_qk" text_style "bb_qk_text"
 
 
@@ -469,7 +472,9 @@ screen preferences():
         text "声　音" style "bb_label"
         use bb_pref_bar("环境音量", Preference("music volume"))
         use bb_pref_bar("音效音量", Preference("sound volume"))
+        use bb_pref_bar("人声音量", Preference("voice volume"))
         text "海浪、穿堂风、窗外的雨是合成的循环，压在正文下面；不想听就拉到零。" style "bb_micro" xsize 1000
+        text "人声只在对质那五桌上，整桌发言都有声——它不标记哪一句可破；正文不配音。" style "bb_micro" xsize 1000
 
         text "界　面" style "bb_label"
         use bb_pref_toggle("快捷菜单", BBToggle("quick_menu"))
@@ -546,12 +551,18 @@ screen help():
         text "主人不会沉默，他把问题推回你手上，那一条不算赢——但抵中他，会拿到他亲口承认的那一句。" style "bb_body_sub" xsize 1000
 
         text "操　作" style "bb_label"
-        use bb_key("点击 ／ 空格", "继续下一句")
+        use bb_key("点击 ／ 空格 ／ 回车", "继续下一句")
         use bb_key("Ctrl（按住）", "快进——只跳读过的部分")
         use bb_key("Tab", "跳过读过的句子（再按一次取消）")
-        use bb_key("Esc", "合上卷宗（菜单）")
+        use bb_key("．（句点）", "一路快进到没读过的地方")
+        use bb_key("Esc ／ 右键", "合上卷宗（菜单）")
+        use bb_key("PageUp ／ 滚轮上", "回看上一句（PageDown 回来）")
+        use bb_key("F1", "就是这一页")
+        use bb_key("S", "截图，存到游戏目录")
         use bb_key("鼠标", "点座位＝跳到那个人身上")
-        use bb_key("方向键 ／ 回车", "菜单、证据栏、名牌都能用键盘走")
+        # 举证据的那一下回车会把这一屏整个重开（桌上每一步都是 call screen → _return），
+        # 焦点于是回到"反　驳"那一格——没举证据时它是灰的，不会误触。
+        use bb_key("方向键 ／ 回车", "菜单、证据栏、名牌都能用键盘走；举完证据直接回车反驳")
         # 引擎里 Tab 只有一个用途：8.5.3 的 00keymap 把 K_TAB 绑在 toggle_skip 上，
         # 挪焦点靠方向键。以前这里写"Tab 挪焦点"，玩家照做就开始跳过正文。
         # 已读的话在右上角快捷栏的「日志」上，这里照实写。
@@ -754,6 +765,10 @@ screen bb_card(chapter, title, sub, day="", snap=None):
             background Frame("images/ui/photo_border.png", 30, 30)
             add snap:
                 xysize (404, 274)
+                # 原图 16:9，这一格 404×274 是 1.47:1。直接 xysize 等于把画面横向压扁
+                # 17%——桥变短、人变窄。按这一格的比例在中间裁，剩下的交给缩放。
+                crop_relative True
+                crop (0.0854, 0.0, 0.8293, 1.0)
 
     hbox:
         xalign 0.26
@@ -879,6 +894,9 @@ screen bb_debate(d):
             ysize 540
             mousewheel True
             draggable True
+            # 不接 PageUp/Down 的话，这两键会漏到全局 rollback 上：玩家想翻页找证据，
+            # 句子却往后跳。game_menu 的视口早就接着，这一格是漏的那个。
+            pagekeys True
             # 证据轨按入手序排，最新的一条在底下。不滚到底，玩家第四夜手里二十多条时
             # 看不见刚拿到手的那条——而破绽只吃当晚手上的证据。
             yinitial 1.0
@@ -974,6 +992,10 @@ screen bb_debate(d):
             text "（先举证据，再反驳）" style "bb_micro"
         textbutton "反　驳" action Return(("rebut", None)) style "bb_btn" text_style "bb_btn_text" xfill True:
             sensitive (d.selected is not None)
+            # 桌上每一步都是 call screen → _return → 重开一屏，焦点每次都被重建。
+            # 没有这一行，键盘玩家举完证据要重新走一遍"证据栏→名牌→动作"才摸到反驳；
+            # 有了它，回车落在哪儿是确定的：没举证据时它是灰的，不会误触。
+            default True
         textbutton "下一句" action Return(("next", None)) style "bb_btn" text_style "bb_btn_text" xfill True
         # 收轮之后这一局就按现在的停顿记账，回不去了——一次误点不能再当没发生。
         # 更要紧的是"听"这条路：有些证据只在听完某一句时才到手（第一夜的死亡时间

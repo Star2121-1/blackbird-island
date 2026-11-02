@@ -44,9 +44,17 @@ label ch7:
 
 ## 3. 可用场景图
 
-`bg_hangzhou`（杭州档案馆）、`bg_dock`（码头）、`bg_hall_long`（大厅·长桌）、`bg_hall_ring`（大厅·环形沙发）、
-`bg_study`（书房）、`bg_east_wing`（东翼走廊）、`bg_corridor`（一楼走廊与楼梯）、`bg_dining`（餐厅·八人桌）、`bg_shore`（礁石·退潮）。
+`bg_hangzhou`（杭州档案馆）、`bg_dock`（码头）、`bg_manor_ext`（庄园·从海上看）、
+`bg_hall_long`（大厅·长桌）、`bg_hall_ring`（大厅·环形沙发，只到第九章撤走之前）、
+`bg_hall_table`（大厅·八仙桌，第九章起）、`bg_study`（书房）、
+`bg_east_wing`（东翼走廊）、`bg_east_wing_room`（东翼那一间房：铁床、防尘布、木匣）、
+`bg_corridor`（一楼走廊与楼梯）、`bg_dining`（餐厅·八人桌）、
+`bg_shore`（礁石·退潮）、`bg_boathouse`（船库·水面）、
+`bg_bedroom_day`（客房·白昼）、`bg_bridge_night`（临东海大桥·雨夜，照片里的桥）。
 写场景时从中选一个最贴的；同一章内换地点就换 `scene`。
+大厅那三张按剧情分：长桌（第一夜）→ 环形沙发（第二夜到第九章之前）→ 八仙桌（第九章起）。
+新增一张要同时补三处，否则 `tools/test_content.py` 那一节会红：`tools/build_assets.py` 的 `BG_KEYS`、
+`game/04_images.rpy` 的 `image bg_*`、`game/00_settings.rpy` 的 `BB_AMB_BY_BG`（漏了那张章节卡就是静音的）。
 
 ## 4. 铁规矩：措辞不改，只删不增
 
