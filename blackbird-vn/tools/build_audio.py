@@ -171,20 +171,23 @@ def wind(sr=SR_LOOP, secs=22.0):
     g2 = swell(n, sr, [(2, 1.0), (4, 0.4), (9, 0.15)], 0.7, base=0.75)
     y = body * g1[:, None] * 0.85
     y[:, 1] = (body * g2[:, None])[:, 1] * 0.85
-    y = y + hiss * (g1[:, None] ** 2) * 0.07
+    # 沙那一层跟 body 的右声道用同一条阵风（g2）：两声道共用 g1 的话，
+    # 高频那层在左右耳是完全一样的，风就粘在头顶不动了。
+    y = y + hiss * (g2[:, None] ** 2) * 0.07
     return y, secs
 
 
 def rain(sr=SR_LOOP, secs=20.0):
     """窗外雨：沙沙的高频 + 滴答 + 极低频的湖面底。
     顶到 6k 那一档是当初照着"雨声素材"给的，压到 4.2k：这本子的雨在窗纸外面，
-    不是打在铁皮上。"""
+    不是打在铁皮上。再压到 3.4k 是 2026-11-02 实测之后：4.2k 顶时 1.2k 以上
+    还占 65% 的能量，是全篇最亮的一条，玩家报的"沙沙"最容易落在它身上。"""
     n = int(sr * secs)
-    hiss = colored_loop(n, sr, bandpass_shape(600, 4200, 1.6))
+    hiss = colored_loop(n, sr, bandpass_shape(600, 3400, 1.6))
     low = colored_loop(n, sr, lowpass_shape(160, 3.0))
     e = swell(n, sr, [(2, 1.0), (5, 0.5), (11, 0.25)], 0.25, base=1.0)
     y = hiss * e[:, None] * 0.62 + low * 0.35
-    return add_bursts(y, sr, 7.0, 0.05, (1400, 4200), 0.07), secs
+    return add_bursts(y, sr, 7.0, 0.05, (1400, 3400), 0.07), secs
 
 
 def room(sr=SR_LOOP, secs=26.0):
@@ -202,8 +205,10 @@ def room(sr=SR_LOOP, secs=26.0):
 # 悬疑片钢琴 loop 一进来就把推理变成广告。自己合成能把音高、密度和混响长度
 # 都钉在"压在对白底下"那一档。三床按地点分，和环境音用同一套查表法。
 #
-# 无缝循环靠三条纪律：和声按整小节铺、拨弦只落在 1/4 拍的网格上、尾巴超出
-# 循环点的部分圆周绕回开头，混响用圆周卷积。任何一条改成时域随机，接缝就露。
+# 无缝循环靠三条纪律：和声只按小节网格摆放（每地两小节长，相邻两地叠一整小节）、
+# 拨弦只落在 1/4 拍的网格上、尾巴超出循环点的部分圆周绕回开头，混响用圆周卷积。
+# 只要每样东西的落点都在网格上、长度固定，绕回来就还是同一张图。任何一条改成
+# 时域随机，接缝就露。
 
 SR_MUS = 22050
 
@@ -249,7 +254,10 @@ def circular_reverb(x, sr, tail_s, decay_s, mix, cut_hz=2200.0):
     m = max(8, int(tail_s * sr))
     ir = colored_loop(m, sr, lowpass_shape(cut_hz, 2.0), channels=1)[:, 0]
     ir = ir * np.exp(-np.arange(m) / float(sr) / decay_s)
-    ir[0] *= 0.15        # 第一下压掉：不然湿声比干声先响，像回声打在玻璃上
+    # 头 5ms 拉掉：噪声 IR 的第一格是个随机大幅值，留着它等于把干声按一个
+    # 没道理的量加进湿声里，接缝处像回声打在玻璃上。压成一小段预延迟更干净。
+    ramp = max(2, int(0.005 * sr))
+    ir[:ramp] *= np.linspace(0.0, 1.0, ramp)
     ir = ir / (np.sqrt(np.sum(ir * ir)) + 1e-12)
     X = np.fft.rfft(x)
     wet = np.fft.irfft(X * np.fft.rfft(ir, n), n)
@@ -258,11 +266,18 @@ def circular_reverb(x, sr, tail_s, decay_s, mix, cut_hz=2200.0):
 
 def music_bed(root, chords, bar=8.0, density=1.6, bright=0.9,
               pad_level=0.34, note_level=0.5, tail_s=2.6, decay_s=1.1,
-              mix=0.42, sr=SR_MUS):
+              mix=0.42, pad_over=2.0, sr=SR_MUS):
     """一床：每小节一地持续和声，上面按 1/4 拍网格撒稀疏的拨弦，左右声道各撒一遍。
 
     root 是根音赫兹，chords 是 (相对半音, 和弦内音) 的序列——自然小调，
     因为这本子没有大调的段落。
+
+    pad_over 是每地和声铺到几倍小节长。原本一地正好一小节，汉宁窗两头归零，
+    小节接缝处只有"正在起音的那一地"在响——实测单独把和声层拎出来量（拨弦关掉、
+    300Hz 以下包络），每小节掉 22.9dB，等于整床响度在九秒一换气。铺到两倍小节、
+    相邻两地叠一整小节，接缝处总有一地在窗中间，同一个量法只剩 8.1dB 的起伏
+    （那点起伏来自和弦本身的音区差，是要的）。1.5 倍是 11.4dB。
+    电平按 sqrt(重叠数) 折回来，免得和声把拨弦盖掉。
     """
     scale = (0, 2, 3, 5, 7, 8, 10)
     loop_s = bar * len(chords)
@@ -272,7 +287,7 @@ def music_bed(root, chords, bar=8.0, density=1.6, bright=0.9,
     for i, (base, tones) in enumerate(chords):
         f0 = root * 2.0 ** (base / 12.0)
         fs = [f0 * 2.0 ** (s / 12.0) for s in tones]
-        pad = pad_sig(fs, bar, sr, pad_level)
+        pad = pad_sig(fs, bar * pad_over, sr, pad_level / (pad_over ** 0.5))
         place(L, pad, int(i * bar * sr))
         place(R, pad, int(i * bar * sr))
     step = 0.25
@@ -378,8 +393,10 @@ MUS_RMS_DB = {"mus_hall": -30.0, "mus_sea": -32.0, "mus_room": -32.0}
 
 _trap = getattr(np, "trapezoid", None) or np.trapz
 
-# 质心上限。每条都留在实测值的 1.4–2.5 倍、白噪声（22k 采样下质心 5500Hz）的
-# 1/4 以下：改坏单位一定撞线，改一改泡沫的多少又不至于天天红。
+# 质心上限。七条的上限留在各自实测值的 1.5–2.5 倍——够松，改一改泡沫的多少
+# 不至于天天红；够紧，单位一退化就撞线：白噪声在 22k 采样下质心 5.5k，比最松的
+# rain（2600）还高 2.1 倍，比 room（300）高 18 倍。
+# 它防的是"退化成白噪声"这一档，防不住"只是偏亮了一点"——那一档归耳朵。
 CEN_MAX = {"amb_sea": 1400.0, "amb_wind": 800.0, "amb_rain": 2600.0,
            "amb_room": 300.0, "mus_hall": 1200.0, "mus_sea": 1200.0,
            "mus_room": 1200.0}
