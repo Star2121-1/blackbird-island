@@ -76,7 +76,7 @@ renpy.exe blackbird-vn compile  # 编译
 | `game/05_day1_gap.rpy` … `game/09_day5.rpy` | 第一至第五日正文 |
 | `game/10_spots.rpy` | 各日热点内容（取证在这里进证据栏） |
 | `game/11_day6.rpy` | 第六日 ch20–ch24 |
-| `game/12_days.rpy` | 日与日之间的 2025 笔记 |
+| `game/12_days.rpy` | 日与日之间的 2025 笔记。两套日历在这里交手：扉页写岛上的日子（十一月十七日起），笔记是二〇二五年的，每段笔记场景重盖一次 `bb_day`，否则菜单里的"日期"会挂着岛上那天，读起来像本子记错了日子 |
 | `game/13_rounds_ab.rpy` | 第二轮、第三轮发言表 |
 | `game/14_rounds_cd.rpy` | 第四轮、第五轮发言表 |
 | `game/build.rpy` | 打包规则：截图屏／存档／缓存不进发行包 |
@@ -84,10 +84,10 @@ renpy.exe blackbird-vn compile  # 编译
 | `tools/build_assets.py` | 素材清洗：背景裁 1920×1080，立绘自适应抠品红底＋去溢色＋底边渐隐 |
 | `tools/build_ui_assets.py` | PIL 画界面硬件：桌环、席位点、规则线、图钉、回形针、装订孔、角章 |
 | `tools/build_fonts.py` | 从 `fonts_src/` 的全量 Noto Sans CJK 裁出本作字表，写回 `game/fonts/`（16MB → 0.5MB）；顺带把 OFL 授权文本从源字体 name 表里取出来并排放好 |
-| `tools/build_icon.py` | 用静默章拼出 `game/icon.ico`（窗口图标），不另起美术 |
+| `tools/build_icon.py` | 用静默章拼出 `game/icon.ico` 和 `game/icon.png`；窗口图标用 png（pygame 读不了 ico 里 256 那条 PNG 压缩项），ico 留给 Windows 可执行文件 |
 | `tools/check_fonts.py` | 缺字闸门：`game/*.rpy` 里每个字都必须在对应字体 cmap 里，缺了就渲染成空白 |
 | `tools/check_verbatim.py` | 改编不变量：台词逐字可溯 + 三条体例 |
-| `tools/test_content.py` | 跨文件完整性：证据有没有孤儿、破绽证据当晚拿不拿得到、热点有没有死标签、每句有没有落空时的话 |
+| `tools/test_content.py` | 跨文件完整性：证据有没有孤儿、破绽证据当晚拿不拿得到、热点有没有死标签、每句有没有落空时的话、报了日期的笔记有没有重盖 `bb_day` |
 | `tools/make_contact.py` | 把 `shots/` 拼成一张联络表，方便一次看全 |
 | `tools/test_logic.py` | 不启 Ren'Py，直接跑 `01_data.rpy` 里的对质逻辑 |
 

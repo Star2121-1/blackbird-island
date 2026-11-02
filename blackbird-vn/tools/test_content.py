@@ -168,6 +168,43 @@ check("全六日沉默总数 %d 处（>0 且每夜至少 2 处）" % total,
 check("每条破绽句的 hit／miss 文案齐（由 test_logic 细验，这里只查总数）",
       all(s.hit and s.miss for _, rows in ROUNDS for s in rows if s.weak_to))
 
+
+# ---------------- 4) 两套日历 ----------------
+# 菜单里的"日期"读 bb_day，而只有扉页会写它。岛上的日子（十一月十七日起）和
+# 顾言笙写笔记的日子（二〇二五年十一月四日起）是两套日历，一夜之间来回切。
+# 扉页刚把日期盖成岛上的十一月十八日，下一段笔记念的却是十一月六日——
+# 少了重盖的那一行，玩家看到的就是一个记错日子的本子。
+HANGZHOU = "scene bg_hangzhou"
+NOTE_DATE = re.compile(r'^\s*N "[^"]*十一月([一二三四五六七八九十]+)日')
+STAMP = re.compile(r'\$ bb_day = "二〇二五年十一月([一二三四五六七八九十]+)日"')
+
+hangzhou = 0
+no_stamp = []
+for p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    fname = os.path.basename(p)
+    if fname.startswith(("00_", "01_", "02_", "04_", "13_", "14_", "99_")):
+        continue
+    lines = io.open(p, encoding="utf-8").read().split("\n")
+    for i, line in enumerate(lines):
+        if HANGZHOU not in line:
+            continue
+        hangzhou += 1
+        narr = next((m.group(1) for j in range(i, min(len(lines), i + 5))
+                     for m in [NOTE_DATE.match(lines[j])] if m), None)
+        if narr is None:
+            continue            # 这段没报日子（岛上人插进来的一句笔记），不比
+        got = next((m.group(1) for j in range(max(0, i - 3), min(len(lines), i + 4))
+                    for m in [STAMP.search(lines[j])] if m), None)
+        if got != narr:
+            no_stamp.append("%s:%d 笔记念十一月%s日，HUD 盖的是%s"
+                            % (fname, i + 1, narr,
+                               "十一月" + got + "日" if got else "岛上那天"))
+
+check("每段报了日期的杭州笔记都重盖了 HUD 日期（杭州景 %d 处，漏 %d 段）"
+      % (hangzhou, len(no_stamp)), not no_stamp)
+for b in no_stamp:
+    info(b)
+
 print("")
 if fails:
     print("FAILED: %d" % len(fails))

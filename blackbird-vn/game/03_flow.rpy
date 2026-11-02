@@ -323,6 +323,7 @@ label epilogue:
     if bb_auto:
         $ bb_trace("[AUTO] epilogue")
     scene bg_hangzhou
+    $ bb_day = "二〇二五年十一月十五日"
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十五日，夜里。"
     GU "把“我是不是”写成“我不知道”的那个人，藏在一个死掉的陈默后面。"

@@ -8,6 +8,11 @@
 # ---------------- 第一日 → 第二日 ----------------
 label day1_pass:
     call screen bb_card("过　夜", "十一月十八日", "雾比夜里更厚。东翼那扇门，是凌晨开的。", "十一月十八日", BB_SNAP("bg_hall_long.jpg"))
+    # 两套日历：扉页上的日期是岛上的（二〇一九年十一月十七日起），笔记的日期是
+    # 顾言笙写笔记的（二〇二五年）。扉页刚把 bb_day 盖成岛上的，紧接着切到笔记，
+    # 菜单里的"日期"就还挂着岛上的那一天——读起来像本子记错了日子。
+    # 每条笔记场景自己重盖一次；下一张岛上的扉页会再盖回去。
+    $ bb_day = "二〇二五年十一月六日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月六日，阴。"
@@ -26,6 +31,7 @@ label day1_pass:
 # ---------------- 第二日 → 第三日 ----------------
 label day2_pass:
     call screen bb_card("过　夜", "十一月十九日", "杯子里的水续了一夜。那一只，没有人续。", "十一月十九日", BB_SNAP("bg_dining.jpg"))
+    $ bb_day = "二〇二五年十一月九日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月九日，雨。"
@@ -45,6 +51,7 @@ label day2_pass:
 # ---------------- 第三日 → 第四日 ----------------
 label day3_pass:
     call screen bb_card("过　夜", "十一月二十日", "木匣开着。那张脸正对门口。", "十一月二十日", BB_SNAP("bg_east_wing.jpg"))
+    $ bb_day = "二〇二五年十一月十日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十日，夜里。"
@@ -61,6 +68,7 @@ label day3_pass:
 # ---------------- 第四日 → 第五日 ----------------
 label day4_pass:
     call screen bb_card("过　夜", "十一月二十一日", "信号断了。岛上八个人，谁也打不出去。", "十一月二十一日", BB_SNAP("bg_shore.jpg"))
+    $ bb_day = "二〇二五年十一月十二日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十二日，清晨。"
@@ -79,6 +87,7 @@ label day4_pass:
 # ---------------- 第五日 → 第六日 ----------------
 label day5_pass:
     call screen bb_card("过　夜", "十一月二十二日", "那只杯子，今天被收走了。", "十一月二十二日", BB_SNAP("bg_corridor.jpg"))
+    $ bb_day = "二〇二五年十一月十三日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十三日，白天。"

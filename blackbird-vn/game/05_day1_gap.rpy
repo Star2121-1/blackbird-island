@@ -99,6 +99,7 @@ label ch4:
     N "和沈南舟握手时一样。和那张纸条一样。"
     N "这个触感，我不应该知道是什么感觉——但我已经知道了。这不对。这些细节，我不该有印象。但我有了。"
     call bb_search("bg_study", "书房 · 暗格里的纸袋", STUDY_SPOTS_D1)
+    $ bb_day = "二〇二五年十一月四日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "十一月四日，晴。"
@@ -164,6 +165,7 @@ label ch5:
     SU "你可能是陈默，也可能不是。"
     SU "九点，大厅见。"
     N "我只知道一件事：我隐约觉得，自己对那晚的死亡负有某种责任。"
+    $ bb_day = "二〇二五年十一月五日"
     scene bg_hangzhou
     show spr_gu as talker at bb_talk_r
     N "十一月五日，阴。"
