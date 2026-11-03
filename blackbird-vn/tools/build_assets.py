@@ -2,7 +2,8 @@
 """把 vibe_images/ 里的 AI 素材洗成 blackbird-vn/game/images/ 可用的图。
 
 背景：cover 裁切到 1920x1080，输出 jpg。
-立绘：边缘泛洪抠底（自适应品红，不假设纯色）+ 去溢色 + 软边 + 按头高归一化，输出带 alpha 的 png。
+立绘：边缘泛洪抠底（自适应品红，不假设纯色）+ 去溢色 + 软边 + 按头宽归一化，输出带 alpha 的 png；
+同一趟从立绘上跟着头切出圆桌用的头像（game/images/faces/）。
 
 用法：python blackbird-vn/tools/build_assets.py
 """
@@ -64,15 +65,19 @@ BG_NIGHT = {
 }
 SPR_KEYS = ["spr_shen", "spr_wang", "spr_zhao", "spr_fang", "spr_zhou",
             "spr_lin", "spr_su", "spr_me", "spr_gu"]
-# 立绘统一画布 + 统一头高。头高定标，人站同一条底线；画布定宽，头才落在席次上。
-SPR_CANVAS = (900, 1080)
-SPR_HEAD_H = 300
-# 剪影量不准的那几个：竖领把肩线推低（赵寒）、长发披到胸前（苏蔓），手工收一档。
-SPR_HEAD_FIX = {
-    "spr_su": 0.76,
-    "spr_zhao": 0.88,
-    "spr_fang": 1.10,
-}
+# 立绘统一画布 + 统一头宽 + 统一身长。
+# 画布宽用生成图自己的 2:3 那一档：上一版是 900×1080（5:6），人最宽那张只占 59%，
+# 两侧各空出 170px 透明——台词页顶到画布边，玩家看到的就是"人又小又飘，框还特别宽"。
+# 头宽定标让九张人是同一间屋子里的人；可只定头不够：九张生成图从头顶往下截到的
+# 位置本来就不一样（顾言笙到胸、赵寒到大腿，实测 614 对 929），底边对齐之后头顶
+# 就从第 137 行飘到第 452 行——换个人说话，人在屏幕上跳一小截。所以再加一道统一身长：
+# 头顶钉死在同一行，往下截 SPR_BODY_H，比它长的那几张在腰上收掉（下面正好是页沿）。
+SPR_CANVAS = (720, 680)
+SPR_HEAD_W = 230
+SPR_CROWN_Y = 60
+SPR_BODY_H = 620
+# 头像那一格不许改尺寸：对质页的 xysize (186, 256) 就是按这个比例写的，改了等于横向压扁。
+SPR_FACE = (314, 432)
 
 
 def latest(prefix):
@@ -257,37 +262,54 @@ def fade_bottom(im, ramp):
 
 
 def measure_head(alpha, probe_h=512):
-    """剪影量头：返回 (头顶 y, 头高, 头心 x)，都在 alpha 的原生像素里。
+    """剪影量头：返回 (头顶 y, 头宽, 头心 x)，都在 alpha 的原生像素里。
 
-    原先每张立绘各自裁包围盒再统一拉到 1080 高，等于按"这张图里人占多满"定比例。
-    九张生成图的取景本来就不一致（有的到腰、有的只到胸），于是头高从 168 到 295
-    差一倍多，并排一站方廷像小孩、顾言笙像巨人。改成按头高定标，人才是同一间屋子里的人。
+    原先锚的是"头顶到肩线"的高度，肩线取"宽度涨得最快的那一行"。可这九张全是半身照，
+    涨得最快的往往在腰上或抬起的那只手臂上，不在脖子上：量出来的"头高"从剪影高的 33%
+    飘到 58%（赵寒的竖领、苏蔓披到胸前的长发各把线推低一档），于是九张人头在屏上差到
+    1.3 倍——玩家说的"人像有点宽"就是头被放大的那几张（陈默、顾言笙、周亦安）。
+    手工补的那三个系数（0.76／0.88／1.10）治的是这个飘，不是人头本身不一样大。
 
-    肩线取"宽度涨得最快的那一行"：头是细的，肩膀突然铺开，斜率峰值就是颈→肩。
-    先在固定 512 高上量再换算回原生——直接按原生高度量，五行的滑动窗和 10%／62% 的
-    搜索区间会随分辨率漂移，同一张图换个尺寸能差出一倍。
-    领子竖起来（赵寒）和长发披到胸前（苏蔓）会把这条线推低，所以留了 SPR_HEAD_FIX。
+    换成头的宽度：肩、领、垂下来的长发都不影响它，最多让长发那张略微偏大一点，
+    不会跳档。取"头顶往下 18% 剪影高"这一段里的最宽一行——这条上界是量出来的：
+    九张里肩线起得最早的一张也在 30% 之后，18% 那一段还在头里面。
+    先在固定 512 高上量再换算回原生：直接按原生高度量，18% 的窗会随分辨率漂移。
     """
     h0 = alpha.shape[0]
     small = np.asarray(
         Image.fromarray(alpha).resize((max(1, int(round(alpha.shape[1] * probe_h / float(h0)))),
                                        probe_h), Image.LANCZOS))
     mask = small > 40
-    roww = mask.sum(axis=1).astype(float)
-    sm = np.convolve(roww, np.ones(5) / 5.0, mode="same")
     nz = np.nonzero(mask.sum(axis=1))[0]
     if not nz.size:
-        return 0, 1, 0
+        return 0, 1, small.shape[1] // 2
     top, bot = int(nz[0]), int(nz[-1])
-    span = max(1, bot - top)
-    d = np.diff(sm)
-    lo = max(1, top + int(span * 0.10))
-    hi = min(len(d) - 1, top + int(span * 0.62))
-    shoulder = lo + int(np.argmax(d[lo:hi])) if hi > lo else bot
-    band = np.nonzero(mask[top:shoulder + 1])[1]
-    cx = int((int(band.min()) + int(band.max())) / 2) if band.size else small.shape[1] // 2
+    hi = min(probe_h - 1, top + max(2, int((bot - top) * 0.18)))
+    band = mask[top:hi + 1]
+    cols = np.nonzero(band[int(np.argmax(band.sum(axis=1)))])[0]
+    if not cols.size:
+        return int(top * h0 / float(probe_h)), 1, small.shape[1] // 2
     k = h0 / float(probe_h)
-    return int(top * k), max(1, int((shoulder - top) * k)), int(cx * k)
+    return (int(top * k), max(1, int((int(cols.max()) - int(cols.min()) + 1) * k)),
+            int((int(cols.min()) + int(cols.max())) / 2 * k))
+
+
+def build_face(key, canvas, head_top, head_cx):
+    """立绘切头像：圆桌的名牌位只有一张冲印照那么大，整人缩进去就糊成一团。
+
+    这一刀原来是按画布比例写的死数（顶往下 2%、取 40% 高），那是立绘还 tight 裁满画布
+    那个年代对的位置。第五轮改成定标之后人落在画布下半部（沈南舟那张的头从第 398 行才
+    开始），同一刀就切在空处——盘上那九张头像一直是旧立绘切的，苏蔓、林晚那两张的发边
+    还留着品红，而立绘上那道去溢色早就有了。所以这一刀得跟着头走，也就得和立绘在同一次
+    运行里出：分两个脚本切，中间任何一次改取景都没人对齐，出的错还都在图上看不出来。
+    """
+    fw, fh = SPR_FACE
+    x0 = max(0, min(head_cx - fw // 2, canvas.size[0] - fw))
+    y0 = max(0, min(int(head_top - fh * 0.08), canvas.size[1] - fh))
+    dst = os.path.join(DST, "faces")
+    if not os.path.isdir(dst):
+        os.makedirs(dst)
+    canvas.crop((x0, y0, x0 + fw, y0 + fh)).save(os.path.join(dst, key[4:] + "_face.png"))
 
 
 def build_sprite(key):
@@ -297,23 +319,36 @@ def build_sprite(key):
         return False
     im = key_out(src)
     a = np.asarray(im)[:, :, 3]
-    top, head_h, cx = measure_head(a)
-    head_h = int(round(head_h * SPR_HEAD_FIX.get(key, 1.0)))
-    s = SPR_HEAD_H / float(head_h)
+    top, head_w, cx = measure_head(a)
+    s = SPR_HEAD_W / float(head_w)
     w = max(1, int(round(im.size[0] * s)))
     h = max(1, int(round(im.size[1] * s)))
     im = im.resize((w, h), Image.LANCZOS)
     canvas = Image.new("RGBA", SPR_CANVAS, (0, 0, 0, 0))
     x = int(round(SPR_CANVAS[0] / 2.0 - cx * s))
-    y = SPR_CANVAS[1] - h
+    y = SPR_CROWN_Y - int(round(top * s))
+    # 剪影的左右沿（不是图片的左右沿）：图片矩形比人宽出一截透明留白，
+    # 拿它判"切没切"会连着报三条假警告——方廷那张真被吃掉的其实只有 2px。
+    cols = np.nonzero((a > 40).any(axis=0))[0]
+    rows = np.nonzero((a > 40).any(axis=1))[0]
+    fx0 = int(round(int(cols[0]) * s))
+    fx1 = int(round((int(cols[-1]) + 1) * s))
+    if x + fx0 < 0:
+        x -= x + fx0
+    if x + fx1 > SPR_CANVAS[0]:
+        x -= (x + fx1 - SPR_CANVAS[0])
     canvas.paste(im, (x, y), im)
     head_top = y + int(round(top * s))
+    hem = y + int(round((int(rows[-1]) + 1) * s))
     canvas = fade_bottom(canvas, 90)
     out = os.path.join(DST, key + ".png")
     canvas.save(out, "PNG", optimize=True)
-    warn = "  ← 顶出画布" if head_top < 0 else ("  ← 左右被切" if x < 0 or x + w > SPR_CANVAS[0] else "")
-    print("OK   ", key, "头高 %d→%d 头顶 y=%-5d 身宽 %d%s" %
-          (head_h, SPR_HEAD_H, head_top, w, warn),
+    build_face(key, canvas, head_top, x + int(round(cx * s)))
+    warn = "  ← 身子被切" if fx1 - fx0 > SPR_CANVAS[0] else (
+        "  ← 脚下留空" if hem < SPR_CANVAS[1] else "")
+    print("OK   ", key, "头宽 %d→%d 身长 %d→%d 头顶 y=%-5d 身宽 %d%s" %
+          (head_w, SPR_HEAD_W, int(round((int(rows[-1]) - int(rows[0]) + 1) * s)),
+           SPR_BODY_H, head_top, fx1 - fx0, warn),
           "%d KB" % (os.path.getsize(out) // 1024))
     return True
 

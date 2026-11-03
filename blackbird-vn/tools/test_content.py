@@ -493,6 +493,66 @@ else:
         check("「%s」帮助页和 README 都写了" % word,
               word in keys_on_help and word in tbl)
 
+# ---------------- 空格真能翻页，翻过的热点还能再点 ----------------
+# "空格 ／ 点击 继续"那行字写在每句对白下面，可按的是运行时状态：键盘焦点在谁手上。
+# 引擎那句对白自己的 SayBehavior 只在自己拿着焦点时才认 dismiss，而玩家照界面说的
+# 点一下之后，焦点就归了对白页那张全屏按钮——空格从此没人接（2026-11-03 玩家实测报的
+# 就是这一条，修之前 space_warm 那趟 at=None，一直卡到闸门自己收档）。
+# 静态读代码量不出焦点，所以料只能真起窗口投真按键：99_shots.rpy 的 keytest 落
+# shots/_keytest.json，每趟记 {"focus": 焦点在谁, "at": 翻页发生在第几拍, "shots": [投了几次]}。
+# 五件事分开钉，各管一种"看起来过了其实没过"：
+#   ① 翻页必须发生在注入之后（自动前进／语音自己走了，不算这一格的本事）；
+#   ② click_arm 那趟的焦点必须真的落在 Button 上——不然 space_warm 是在白过，
+#      它验的还是"焦点没被抢走"那个假世界；
+#   ③ space_slow 的第一下不许翻页（打字吞掉那一口），第二下才翻：补了 unfocused
+#      之后最容易被顶掉的就是"先打完再翻"；
+#   ④ card_space／result_space 的焦点也得是 Button，而且同样被空格收掉——扉页和结算页
+#      没有 SayBehavior，dismiss_unfocused 那一格管不到它们，只在对白上修好等于修了一半
+#      （本作 25 张卡，每章开头都要撞一次那堵墙）；
+#   ⑤ spot_reclick 那两下点的是同一个真坐标，两次都得交回 ("spot", id)，而 found
+#      只记一条——只看第一下有没有效，等于没测"翻过的还能再点"这件事。
+KEYTEST_DUMP = os.path.join(HERE, "shots", "_keytest.json")
+KT_PHASES = ("space_cold", "click", "click_arm", "space_warm", "space_slow",
+             "card_space", "result_space", "spot_reclick")
+_kt = {}
+if not os.path.exists(KEYTEST_DUMP):
+    check("有 shots/_keytest.json（先跑 BB_KEYTEST=1 那一趟，见 docs/development.md 的自检一节）", False)
+else:
+    with io.open(KEYTEST_DUMP, encoding="utf-8") as f:
+        _kt = json.load(f)
+    check("键盘闸门八趟全在（缺哪趟＝keytest 卡在哪句：%s）" % ",".join(sorted(_kt)),
+          set(_kt) == set(KT_PHASES))
+    for _p in KT_PHASES:
+        _r = _kt.get(_p) or {}
+        _at = _r.get("at")
+        _shots = _r.get("shots") or []
+        # 最后一拍注入、注入后 8 拍（约 0.4 秒）内必须翻掉；再晚就是在演别的戏。
+        check("%s 翻页发生在注入的那一下（at=%s shots=%s）" % (_p, _at, _shots),
+              bool(_shots) and _at is not None and _shots[-1] <= _at <= _shots[-1] + 8)
+    _arm = (_kt.get("click_arm") or {}).get("focus")
+    check("那一按点真把键盘焦点交给了全屏按钮（focus=%s）" % _arm, _arm == "Button")
+    _cardf = (_kt.get("card_space") or {}).get("focus")
+    check("那一趟真停在扉页上（focus=%s，不是对白页）" % _cardf, _cardf == "Button")
+    _resf = (_kt.get("result_space") or {}).get("focus")
+    check("结算那一趟真停在结算页上（focus=%s，不是对白页）" % _resf, _resf == "Button")
+    # 玩家报的第二件：热点看完就点不动。同一个坐标投两次，两次都得把 ("spot", id)
+    # 交回来；found 只许记一条——"看过 N ／ M"那格直接数它的长度，
+    # 重看一次就报成 5／4，而"看完才能走"那道闸门也会提前开。
+    _rc = _kt.get("spot_reclick") or {}
+    check("翻过的热点还能再点（两次都交回 spot：%s）" % _rc.get("returns"),
+          _rc.get("returns") == [["spot", "invite"], ["spot", "invite"]])
+    check("重看不把 found 记成两条（%s）" % _rc.get("found"), _rc.get("found") == 1)
+    # 键位表那一半：白页写"空格"，表里就得真有空格——两处都得有，
+    # 只挂 dismiss 的话焦点一被抢走就又哑了（这正是本轮修的东西）。
+    if os.path.exists(KEYMAP_DUMP):
+        with io.open(KEYMAP_DUMP, encoding="utf-8") as f:
+            _km = json.load(f)
+        check("K_SPACE 在 dismiss 里", "K_SPACE" in (_km.get("dismiss") or []))
+        check("K_SPACE 也在 dismiss_unfocused 里（%s）" % _km.get("dismiss_unfocused"),
+              "K_SPACE" in (_km.get("dismiss_unfocused") or []))
+    else:
+        check("K_SPACE 的焦点无关那一格没法查（没有 shots/_keymap.json）", False)
+
 # ---------------- 配音诚实 ----------------
 # 对质整桌发言都进 voice 通道，台词原文当键。这件事有三个地方会烂：
 #   台词改了没重跑 build_voice → 键和发言表对不上，那一句静悄悄没有声音；
@@ -928,6 +988,135 @@ check("并排是双向的（摆的顺序不能影响结果）",
 # 不在这里改文件，只验"闸认得屏体"这件事：截到的屏体必须真的含两张便签的代码。
 check("并排屏真的画了两张便签（截空了＝切片切错，闸在空转）",
       "EVIDENCE[_id].brief" in _pair_body and _pair_body.count("xsize 640") >= 2)
+
+# ---------------- 立绘几何与说话人 ----------------
+# 玩家的眼睛报了两件事："人有点宽"、"换个人说话人跳一截"。都能量，量不开好坏
+# 的不配当闸：
+#   头宽不齐——九张生成图人头本来就差到 1.3 倍。第五轮那道锚点收的是肩线，
+#     带立领和披发的那几张上它从 33% 飘到 58%，等于没定标。
+#   头顶不齐——只定头宽不够：生成图从头顶往下截到的位置本来就不一样（实测身长
+#     614 对 929），底边一对齐，头顶就从第 137 行飘到第 452 行——换个人说两句，
+#     人在屏幕上跳一小截。
+#   画布过宽——900×1080 那一版人最宽那张只占 59%，两侧各空 170px 透明；台词页
+#     把画布顶到屏幕边，玩家看到的就是"人又小又飘，框还特别宽"。
+# 横向拉宽这条管线出不了：build_sprite 只算一个缩放数 s，x 和 y 同乘它
+# （tools/build_assets.py 的 build_sprite），PIL 收到的是同一个比例。源图在
+# vibe_images/ 且不进 git，夜版底图那种"重算一遍逐字节对上"在这儿走不通，
+# 所以下面查的是盘上这张图的状态，不是管线的过程。
+from PIL import Image
+
+CW, CH = BA.SPR_CANVAS
+SPR_FOR = g["SPR_FOR"]   # 从数据层那份读，不在这里抄一张
+# 带宽是量出来的，不是拍的：九张实测头宽 215～228（定标 230，最差的方廷 93.5%）、
+# 头顶第 59～65 行（定标 60）、剪影高占画布高 0.884～0.891、
+# 最宽那张（赵寒）占画布宽 0.868。旧版拿这三个带宽一一验过，九张里七张出界。
+HEAD_TOL, CROWN_TOL = 0.08, 6
+
+
+def _silh(png):
+    im = Image.open(png)
+    a = np.asarray(im.convert("RGBA").split()[-1], dtype=np.uint8)
+    m = a > 40
+    rows = np.nonzero(m.sum(axis=1))[0]
+    cols = np.nonzero(m.sum(axis=0))[0]
+    cy, hw, _cx = BA.measure_head(a)
+    return (im.size, int(cols[-1]) - int(cols[0]) + 1,
+            int(rows[-1]) - int(rows[0]) + 1, float(hw), int(cy))
+
+
+_sil = dict((k, _silh(os.path.join(GAME, "images", k + ".png"))) for k in BA.SPR_KEYS)
+check("立绘画布就是管线钉的那一格（%d×%d）" % (CW, CH),
+      all(v[0] == (CW, CH) for v in _sil.values()))
+_w = sorted((v[3] / BA.SPR_HEAD_W, k) for k, v in _sil.items())
+check("九张头宽对得上定标（实测 %.0f%%～%.0f%%，容 ±%.0f%%）"
+      % (100 * _w[0][0], 100 * _w[-1][0], 100 * HEAD_TOL),
+      _w[0][0] >= 1 - HEAD_TOL and _w[-1][0] <= 1 + HEAD_TOL)
+_c = sorted(v[4] for v in _sil.values())
+check("九张头顶在同一行（实测第 %d～%d 行，定标 %d±%d）"
+      % (_c[0], _c[-1], BA.SPR_CROWN_Y, CROWN_TOL),
+      _c[0] >= BA.SPR_CROWN_Y - CROWN_TOL and _c[-1] <= BA.SPR_CROWN_Y + CROWN_TOL)
+# 分母用每张图自己的画布，不用 SPR_CANVAS 那个常数：拿常数去量，把画布改宽回
+# 900 那一版，比值一动不动（625/720 还是 0.868），闸就成了一张贴在墙上的尺子。
+_fillh = sorted(v[2] / float(v[0][1]) for v in _sil.values())
+check("身子把画布接满（实测 %.3f～%.3f）" % (_fillh[0], _fillh[-1]),
+      _fillh[0] >= 0.85 and _fillh[-1] <= 0.92)
+_widest = max(v[1] / float(v[0][0]) for v in _sil.values())
+check("画布不宽过人（最宽那张只占 %.3f，旧版 900 宽时是 0.59）" % _widest, _widest >= 0.75)
+# 头像那一格不许被压扁：对质页的名牌位是 xysize 硬塞的，格子和图片比例不一致
+# 就是横向变形——玩家说的"有点宽"如果是真的，就在这儿。
+_chip = re.search(r"bb_face\([^\n]*?\):\s*\n\s*xysize \((\d+),\s*(\d+)\)",
+                  io.open(os.path.join(GAME, "02_screens.rpy"), encoding="utf-8").read())
+check("头像切出来就是名牌位那一格（%d×%d）" % BA.SPR_FACE,
+      all(Image.open(os.path.join(GAME, "images", "faces", k[4:] + "_face.png")).size
+          == BA.SPR_FACE for k in BA.SPR_KEYS))
+_chip_skew = -1.0 if _chip is None else abs(
+    int(_chip.group(1)) / float(int(_chip.group(2))) /
+    (BA.SPR_FACE[0] / float(BA.SPR_FACE[1])) - 1) * 100
+check("头像格和对质页的 xysize 同比例（差 %.2f%%，超 1%% 就是拿名牌位横向压扁）"
+      % _chip_skew, _chip is not None and _chip_skew <= 1.0)
+
+# 说话人上台只有一条路：角色自己那句 bb_stage。剧本里再手写 show 就等于两个人
+# 抢一个台——手写那条只在这个人第一次开口时写，下一句换了人，台上还站着上一个。
+# 连 `as talker` 一起禁：现在标签就是人名，多挂一个 talker 槽不会被 bb_stage 摘掉，
+# 症状变成两张脸并排站着。
+_hand = []
+for _p in sorted(glob.glob(os.path.join(GAME, "*.rpy"))):
+    if os.path.basename(_p).startswith("99_"):
+        continue          # 截图台架不走 Character（直接 show screen say），得手写
+    for _i, _ln in enumerate(io.open(_p, encoding="utf-8").read().split("\n"), 1):
+        if re.match(r"\s*show\s+spr_[a-z0-9_]+\b", _ln):
+            _hand.append("%s:%d" % (os.path.basename(_p), _i))
+check("剧本里不联手写台上那位（剩 %d 处：%s）" % (len(_hand), ",".join(_hand[:3])),
+      not _hand)
+# 每个 BBChar 都得有脸，没脸的（黑鸟）要在这里点名——新增一个说话人而忘了立绘，
+# 症状是"他说话时台上站着别人"，玩家不会报，只会以为自己看错了。
+_set_src = io.open(os.path.join(GAME, "00_settings.rpy"), encoding="utf-8").read()
+_speakers = set(re.findall(r'BBChar\("([^"]+)"', _set_src))
+_noart = sorted(_speakers - set(SPR_FOR))
+check("开口的每一个人都在名字→立绘表里（漏 %d 个：%s）"
+      % (len(_noart), ",".join(_noart)), _noart == ["黑鸟"])
+check("名字→立绘表里没有一个查无此人（多 %d 个）"
+      % len(set(SPR_FOR) - _speakers), set(SPR_FOR) <= _speakers)
+check("表里点的每张脸都注册了（漏 %d 张）"
+      % len(set(SPR_FOR.values()) - set(SPR_REG.values())),
+      set(SPR_FOR.values()) <= set(SPR_REG.values()))
+check("旁白挂陈默的脸（bb_stage 里 who=None 走 spr_me）",
+      '"spr_me" if who is None' in _set_src)
+
+# 台上到底站着谁，还得运行时量一次：静态只能证明"剧本里没手写 show"，证不了
+# bb_stage 真的跑、真的换脸。keytest 每一趟都从引擎的 master 层读回 stage，
+# 期望值不在这里另立一张表——从 99_shots.rpy 里那一趟后面紧跟的那句 say 现算，
+# 再顺着 define … = BBChar("名字") 和 SPR_FOR 落到立绘名。多立一张表，
+# 表改了剧本没改，闸还是绿的。
+_who_of = {}
+for _m in re.finditer(r'define (\w+) = BBChar\((None|"[^"]*")', _set_src):
+    _who_of[_m.group(1)] = None if _m.group(2) == "None" else _m.group(2).strip('"')
+_want = {}
+_cur = None
+for _ln in io.open(os.path.join(GAME, "99_shots.rpy"), encoding="utf-8").read().split("\n"):
+    _m = re.search(r'_kt_phase\("([^"]+)"\)', _ln)
+    if _m:
+        _cur = _m.group(1)
+        continue
+    _s = re.match(r'\s*([A-Z][A-Z_]*)\s+"', _ln)
+    if _cur is not None and _s:
+        _want[_cur] = _s.group(1)
+        _cur = None
+check("台架里每一趟都说了一句能查说话人的话（查到 %d／%d 趟）"
+      % (len(_want), len(KT_PHASES)), len(_want) >= 4)
+if not _kt:
+    check("台上站着谁没法查（没有 shots/_keytest.json，先跑 BB_KEYTEST=1）", False)
+else:
+    for _p in KT_PHASES:
+        _got = (_kt.get(_p) or {}).get("stage")
+        _w = _want.get(_p)
+        if _w is None:      # 扉页／结算／热点那几趟没有 say，只查"台上还有一张脸"
+            check("%s 台上仍站着一张注册过的脸（stage=%s）" % (_p, _got),
+                  _got in list(SPR_FOR.values()) + ["spr_me"])
+        else:
+            check("%s 那一句把 %s（%s）摆上台（stage=%s）"
+                  % (_p, _w, _who_of.get(_w) or "旁白＝陈默", _got),
+                  _got == SPR_FOR.get(_who_of.get(_w), "spr_me"))
 
 print("")
 if fails:

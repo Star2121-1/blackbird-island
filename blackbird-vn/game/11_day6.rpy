@@ -18,25 +18,17 @@ label ch20:
     N "今天，是十一月二十二日。十年那个期限，在十一月十七日。已经过去了五天。"
     N "沈南舟站在桌后，没有坐。"
     N "日头落在他没有动的脸上。"
-    show spr_shen as talker at bb_talk_r
     SHEN "十年，过去了。而期限，超了五天。"
     N "大厅里静得没有声音。"
     N "十年，是一个期限，不是时间。"
-    show spr_fang as talker at bb_talk_r
     FANG "撤掉一个位置，需要一个时间点。二〇〇九，他不在了。二〇一九，是那个该收的时候。不是随时，是十年。"
-    show spr_lin as talker at bb_talk_r
     LIN "二〇〇九，到二〇一九。十年。"
     N "没有人接她的话。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "十年这个数，是一个等头了的数。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "那只，等过一个人。"
-    show spr_su as talker at bb_talk_r
     SU "等了十年，为什么是今天？是忘了才收的，还是终于认了，他不会再来？"
-    show spr_shen as talker at bb_talk_r
     SHEN "先生，守一个不会来的人，到十年，就是守到头了。"
     SHEN "多留的那五天，是在等一个人，问出为什么是今天。"
-    show spr_me as talker at bb_talk_r
     ME "我一直以为，那一个位置，是给我留的。"
     ME "我记不清了。是从我上岛那一天起，我就坐在第七只杯子上。还是在属于陈默的那段记忆里，那只正对门口的杯子，从来是给另一个人的。"
     N "门口没有风。"
@@ -53,25 +45,20 @@ label ch21:
     scene bg_hall_table
     N "夜，深了。大厅里，人，散得只剩几个。"
     N "沈南舟站在八仙桌前。那一截浅白的纸还压在那儿。"
-    show spr_shen as talker at bb_talk_r
     SHEN "游戏，"
     SHEN "到这里为止。"
     N "他把那一截浅白的纸折好，收进口袋。留着，还是交出去，他没有说。"
     N "赵寒没有走。他站在门边，背着光。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "剩下的那一半，我没有记。"
     N "他没有说，是什么。"
     N "苏蔓合上了那本一直在写的笔记本。"
-    show spr_su as talker at bb_talk_r
     SU "二〇一三，立牌的人，复核的人，同一个？"
     N "王剑坐在那一头，没有动。"
     scene bg_hall_table
     N "沈南舟没有回答这一句。他转身，向楼梯走去。"
-    show spr_shen as talker at bb_talk_r
     SHEN "诸位，"
     SHEN "有些话，我不说。"
     N "楼梯上，脚步声，很轻。"
-    show spr_me as talker at bb_talk_r
     ME "我不愿意去想，那个名字，到底是谁的。"
     ME "我也不愿意去想，那个位置，是留给谁的。"
     ME "我记不清了。是我一直在护着那个名字，还是那个名字，本来就是我该忘的。"
@@ -85,20 +72,15 @@ label ch22:
     N "清晨。日头落进大厅。"
     N "沈南舟回来了。他没有把那截浅白的纸拿出来。他把二〇〇九那张封装记录，重新摊在八仙桌上。那一栏，空的，复核人。"
     N "苏蔓没有翻开她那本合上的笔记本。"
-    show spr_su as talker at bb_talk_r
     SU "空的那一栏，是为了让它永远空着，还是为了没人再找回来？"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "二〇〇九那一栏，和二〇一三那一块立牌，是两个年份。两样事。"
     N "他看着王剑。"
     ZHOU "二〇一三，你到场了。你立过牌。那是见证。二〇〇九那一栏空的复核人，落不到你头上。"
-    show spr_fang as talker at bb_talk_r
     FANG "认定一个人是二〇〇九的经手，要他当年在场，并且署名。这两样，王剑一样也拿不出。"
     N "王剑坐在那一头，没有动。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "那条追了很多年的线，到头了。"
     N "半句。停在那里。他没有说，那条线追到了什么。"
     N "沈南舟看着那一栏空，很久。他没有看王剑。他看着我。"
-    show spr_shen as talker at bb_talk_r
     SHEN "先生，"
     SHEN "有些落款，是落不回去的。"
     N "那一个落款的名字，他到这一步，还是没有出口。"
@@ -118,27 +100,22 @@ label ch23:
     N "那张脸，正对着门口。"
     N "门口那只空杯，已经收走了。空着的那一块位置。"
     N "沈南舟看了那一栏空的复核人，很久。"
-    show spr_shen as talker at bb_talk_r
     SHEN "诸位，"
     SHEN "这一场，到这里，可以摊开了。"
     N "他摊开了这一场，那一栏空着的是谁，他仍旧没有把名字给出来。"
     SHEN "你们七个，被我请来，不是为了任何一个人。"
     SHEN "真相，不在这七个人身上。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "你把七个都请来，却谁都不指。你指的是，你们与二〇〇九那一夜的关联。每一个关联，本身就是证词。"
     N "沈南舟没有点头。他看着那一栏空的。"
-    show spr_shen as talker at bb_talk_r
     SHEN "二〇〇九，"
     SHEN "那张照片，那个经手的人。还有一张纸条。那只手，你们见过。"
     N "他停了一下。"
     SHEN "有些名字，我不说。"
     N "大厅里很静。"
     N "那张黑白照片，还摊在桌上。那张脸，正对门口。门口，空着。"
-    show spr_me as talker at bb_talk_r
     ME "我坐在那一排人的最后。那张脸，我认得。我不认得。"
     ME "我记不清了。"
     ME "是我一直没有去看那张脸，还是在属于陈默的那段记忆里，那张脸，本来就该空着。"
-    show spr_shen as talker at bb_talk_r
     N "沈南舟收起那张照片。他把它和那张封装记录，并折进一只信封。"
     SHEN "这个，"
     SHEN "留给该留的人。"
@@ -158,7 +135,6 @@ label ch24:
     scene bg_dock
     N "码头上，渡轮六点不返。小艇，也不在了。这座岛，今夜，留住我们。"
     scene bg_hall_table
-    show spr_me as talker at bb_talk_r
     ME "我坐在那张桌子前。"
     ME "我没有动。"
     ME "那一栏空着的复核人，我一直没有去对，它是谁。"
@@ -168,11 +144,9 @@ label ch24:
     # 筛子到手，给玩家一个真的动作：把两条证据并排放下，看正文在哪一处把它们并排写过。
     # 这一屏不评分，不指认谁，也不给答案——桌上摆的是引用，不是结论。
     call bb_pair_desk
-    show spr_zhao as talker at bb_talk_r
     N "赵寒站在门口。他没有进来。"
     ZHAO "你还在对那一栏空。"
     N "不是问句。"
-    show spr_me as talker at bb_talk_r
     ME "我没有在对。我只是，没把它说出口。"
     N "他没有接。他退回雾里。"
     ME "手稿最后一页，那一行，我没有改。"
@@ -181,7 +155,6 @@ label ch24:
     # 这一段不换夜版：台词里没有时辰，光靠下一张卡推。夜版从尾声那条
     # "十一月十五日，夜里"开始（`03_flow.rpy` 的 epilogue）。
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     GU "手稿，最后一页。这一行，我读了第四遍。"
     GU "那一个名字，到底是坐着的七个人里的哪一个。哪一个，我没有写下来。"
     GU "我无法确定哪一部分是真的。我只知道，在黑鸟岛上，每个人都在说谎。包括我。"

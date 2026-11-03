@@ -19,25 +19,20 @@ label ch17:
     ME "我忽然很怕它。"
     ME "不是怕它空。是怕我一直以为，那一个位置，是给我留的。"
     N "苏蔓开口了，没有转向我。"
-    show spr_su as talker at bb_talk_r
     SU "补那一栏，是想把那个名字留下来，还是想把它去掉？"
     N "方廷接住了这个问题。"
-    show spr_fang as talker at bb_talk_r
     FANG "一个把名字抹掉的人，留下的是证据，不是证词。"
     FANG "证据可以摆在那里，不说话。证词不行。证词需要一个愿意把它重新写回去的人。"
     N "大厅里安静。"
     N "周亦安慢慢地说。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "复核，本身，是一次到场。"
     N "这一句他说得很轻，像同一句话已经说过一次了。"
     ZHOU "一个抹掉自己名字的人，是那种在场、却又不到场的。"
     N "赵寒从那一头走过来。他没有看那张纸。他看着我。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "那一栏，我父亲擦过。"
     ZHAO "擦的人，就是写的人。"
     ME "我没有接话。我记不清了。是这一刻我第一次知道这一栏是空的，还是更早就知道。我不知道。"
     N "沈南舟看着我。他没有看那张纸。日头落在他脸上，他没有动。"
-    show spr_shen as talker at bb_talk_r
     SHEN "先生，补不补那一栏，您定。"
     ME "为什么不补，他不说。那只空杯留给谁，他也不说。"
     N "我走到桌前。"
@@ -64,28 +59,23 @@ label ch18:
     N "桌上多了一截浅白的纸。纸没有写字，只压出一个浅淡的杯印。"
     N "昨夜，有人从桌下的抽屉里抽出这张纸，搁在了杯子底下。"
     N "沈南舟站在桌前，没有看那张纸。他看着我。"
-    show spr_shen as talker at bb_talk_r
     SHEN "先生，那只空着的，我让人收掉了。"
     N "日头的边从桌心退开了一寸。"
     N "苏蔓，拿出一张纸条。就是那张。"
-    show spr_su as talker at bb_talk_r
     SU "我留着它。"
     N "她把纸条翻过来。左角，一个笔画的钩。"
     SU "我对照过周亦安的册子。陈是守望者之一那一行，同一只手。"
     N "苏蔓转向我。"
     SU "收掉那只空杯，是怕有人把它倒满，还是怕没人去问它？"
     N "方廷接住了。"
-    show spr_fang as talker at bb_talk_r
     FANG "一只空着的杯子，本身不是证据。但收走它的这个动作，是。"
     N "周亦安慢慢地说。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "一只杯子，可以收掉。"
     ZHOU "可那只正对门口的，收掉的不是杯子。"
     ZHOU "是那个位置。"
     N "赵寒走过来。"
     N "他站在那截浅白的纸前，没有碰。"
     N "沈南舟理了理袖口。"
-    show spr_shen as talker at bb_talk_r
     SHEN "先生，有些留了很久的位置，到了该收的时候，就要收。"
     ME "为什么是今天收，他没有讲。"
     call bb_search("bg_hall_table", "八仙桌 · 杯收走之后", TABLE_SPOTS_D5)
@@ -106,7 +96,6 @@ label ch19:
     N "傍晚，我回大厅，又数了一遍人。"
     N "八个。"
     N "王剑回来了。雾还没有散尽，他走了进来。没有人问他去了哪里。"
-    show spr_wang as talker at bb_talk_r
     WANG "我去了码头。小艇，不见了。缆绳还是解开的样子，跟我走的时候一样。"
     ME "岛上，谁都不能出岛了。就现在。"
     # 上面那张卡（第十七章）开在下午——"日头从窗缝里落进来"，那一段留白昼那张。
@@ -116,26 +105,20 @@ label ch19:
     ME "是那只空杯，在我的记忆里，一直是空的。还是在属于陈默的那一段记忆里，有人坐过那个位置。我记不清了。那不是我的记忆。"
     N "我没有去碰那张浅白的纸。"
     scene bg_hall_table
-    show spr_su as talker at bb_talk_r
     SU "收掉那只杯子，守了这么多年，为什么偏偏是现在？"
-    show spr_shen as talker at bb_talk_r
     SHEN "先生，有些事，到了时候。"
     N "方廷接住了这句没有说完的话。"
-    show spr_fang as talker at bb_talk_r
     FANG "那只杯子空着，是因为它在等一个人。等的那一个人，如果不会来了，那么这只杯子，就不是留给他。它就该收掉。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "这个前提，没有人能证明。"
     ZHOU "你怎么知道那个人不会来了？你怎么知道，他不是只是晚了一点？"
     ME "那个等的人，二〇〇九年就不在了。这件事，我是在那张旧照片上看到的。我没有说这句话。"
     ME "我不是怕说错。我只是不知道，我有没有资格说它。"
     scene bg_east_wing
     N "后半夜，停电了。林晚去东翼换保险丝。"
-    show spr_lin as talker at bb_talk_r
     LIN "那道新锁，向左移了半寸。"
     scene bg_corridor
     N "那是赵寒撬开的那把锁。他当时没有复位，让它吊着。我问林晚，那半寸是不是她碰的。"
     LIN "柄是凉的。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "我撬开那夜，锁体，从两枚钉里的一枚上，滑脱了。挂着它的，只剩一枚钉。这岛上的风，天天压着门板。几天，锁，顺着那枚钉，滑了半寸。"
     ZHAO "没有谁动过它。风动的。"
     call bb_search("bg_east_wing", "东翼 · 换了保险丝之后", WING_SPOTS_D5)

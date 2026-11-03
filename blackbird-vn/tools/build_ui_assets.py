@@ -559,25 +559,6 @@ def build_table(cx=0.5, cy=0.47, rx=0.258, ry=0.205, n=8):
     save(im, "table_ring.png")
 
 
-# ---------------- 头像裁切 ----------------
-def build_faces():
-    """立绘切头像。圆桌的名牌位只有一张冲印照那么大，整人缩进去就糊成一团。"""
-    src = os.path.join(ROOT, "game", "images")
-    dst = os.path.join(src, "faces")
-    if not os.path.isdir(dst):
-        os.makedirs(dst)
-    for p in sorted(glob.glob(os.path.join(src, "spr_*.png"))):
-        im = Image.open(p).convert("RGBA")
-        w, h = im.size
-        chh = int(h * 0.40)
-        cww = int(chh * 0.728)
-        x0 = max(0, min((w - cww) // 2, w - cww))
-        y0 = int(h * 0.02)
-        name = os.path.basename(p)[4:-4] + "_face.png"
-        im.crop((x0, y0, x0 + cww, y0 + chh)).save(os.path.join(dst, name))
-    print("OK   game/images/faces")
-
-
 # ---------------- 照片纱 / 颗粒 / 暗角 ----------------
 def build_veils():
     W, H = 1920, 1080
@@ -747,7 +728,6 @@ def main():
     build_hardware()
     build_icons()
     build_table()
-    build_faces()
     build_veils()
     build_photo_border()
     build_preview()

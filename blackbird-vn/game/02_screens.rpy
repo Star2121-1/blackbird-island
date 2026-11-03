@@ -743,6 +743,14 @@ screen bb_card(chapter, title, sub, day="", snap=None, mood=None):
         yfill True
         background "#00000000"
         action Return()
+    # 空格在这一屏原本没人接：那一屏根本没有 SayBehavior，对白那边靠
+    # config.keymap["dismiss_unfocused"] 补的那一格也管不到这里，而
+    # button_select（焦点按钮吃回车那一格）里没有 K_SPACE。
+    # 用的是屏级的 key 语句（引擎的 Keymap），它不看键盘焦点。只点 K_SPACE
+    # 不点 "dismiss"：那一格还带着 mouseup_1，挂上来等于让一次抬手被两张按钮抢。
+    # 写在按钮里面是不行的——`key` 在 button 块里会被当成样式属性吃掉，
+    # 不报错也不生效（第一版就这么写的，card_space 那趟照样 at=None）。
+    key "K_SPACE" action Return()
 
     # 水印取的是"第X章"里那个 X，不是倒数第二个字：第十一章原来只剩一个"一"，
     # 和第一章撞，第二十章又撞第十章。字号按字数除，让整块宽度恒定在 460，
@@ -834,14 +842,23 @@ screen bb_explore(bg, spots, found, hint):
     for s in spots:
         if s["id"] in found:
             # 装订孔要压在一张纸片上：直接落在深照片里，孔就看不见了。
-            add Frame("images/ui/frame_chip.png", 14, 14):
+            # 这张纸片原来是一句 add——看完就点不动了。玩家要的就是"再看一遍"，
+            # 而"翻过的地方"恰恰是最需要回看的地方（对质抵不动时得回来重读）。
+            # 所以把它换成同样大小的按钮：静止的料还是那两样（纸片＋孔），
+            # 只在悬停时亮一档（沿用没看过那一颗用的 hover 片，不新调一种颜色）。
+            # 点击区 46 见下方注释：这是重看，不是必须找到的目标，不为它撑到 92。
+            button:
+                pos (s["x"], s["y"])
+                anchor (0.5, 0.5)
                 xysize (46, 46)
-                pos (s["x"], s["y"])
-                anchor (0.5, 0.5)
-            add "images/ui/hole.png":
-                xysize (28, 28)
-                pos (s["x"], s["y"])
-                anchor (0.5, 0.5)
+                padding (0, 0)
+                background Frame("images/ui/frame_chip.png", 14, 14)
+                hover_background Frame("images/ui/frame_chip_hover.png", 14, 14)
+                add "images/ui/hole.png":
+                    xysize (28, 28)
+                    xalign 0.5
+                    yalign 0.5
+                action Return(("spot", s["id"]))
         else:
             # 亮着的坑：92px 的点击区（4.8% 屏宽），图标本身比点小一档，
             # 呼吸的 alpha 告诉玩家"这里还没翻过"。关掉过渡动效时不呼吸。
@@ -1275,11 +1292,14 @@ screen bb_result(silence, total, lines, head="第一轮 · 结算", sub="逼出�
     use bb_head(head, sub)
     # 结算页也要"点哪儿都能走"：它是玩家看得最久的一屏。垫一张透明的整屏按钮，
     # 后面的纸片、正文都不吃点击，点击会落回这一张。和扉页同一套写法。
+    # 空格也照扉页补一条屏级 key（原因写在那一屏的注释里）：回车这屏本来就有
+    # "继续"那颗 default True 接着，缺的还是空格。
     button:
         xfill True
         yfill True
         background "#00000000"
         action Return()
+    key "K_SPACE" action Return()
 
     text str(silence) + " ／ " + str(total) xalign 0.44 yalign 0.40 xanchor 1.0 style "bb_hero"
     text "处沉默" xalign 0.465 yalign 0.455 style "bb_label" color bb_rust

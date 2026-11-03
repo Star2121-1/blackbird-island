@@ -18,7 +18,8 @@ label shot_all:
     python:
         import json as _json
         import os as _os
-        _want = ["choose_renderer", "hide_windows", "dismiss", "game_menu", "toggle_skip",
+        _want = ["choose_renderer", "hide_windows", "dismiss", "dismiss_unfocused", "game_menu",
+                 "toggle_skip",
                  "skip", "fast_skip", "rollback", "rollforward", "help", "screenshot",
                  "self_voicing", "focus_left", "focus_right", "button_select"]
         _dump = dict((k, sorted(config.keymap.get(k, []))) for k in _want)
@@ -69,7 +70,7 @@ label shot_all:
     hide screen main_menu
 
     scene bg_dock
-    show spr_shen as talker at bb_talk_r
+    show spr_shen at bb_talk_r
     show screen say("沈南舟", "我是沈南舟，这栋庄园的主人。欢迎你来。")
     pause 2.4
     $ _shot("02_say")
@@ -256,6 +257,205 @@ label shot_all:
 
     $ renpy.end_replay()
     $ renpy.quit()
+    return
+
+
+# ---------------- 键盘闸门 ----------------
+# 玩家报"按空格不能到下一句，点击才行"。键位表是好的（shots/_keymap.json 里 K_SPACE
+# 就挂在 dismiss 那一格），坏的是"投进去没人接"那一半：引擎那句对白自己的 SayBehavior
+# 走 `if check_focus and not self.is_focused(): continue`，而键盘焦点只在交互开始时
+# 默认落在它身上——**点过一下之后**，焦点归对白页那张全屏"点任意处"按钮，空格就没人接了。
+# 焦点是个运行时状态，静态读代码看不出来，所以这八趟都往真窗口的事件队列里投真事件：
+#   ① space_cold：没点过，直接投 KSPACE → 该翻页
+#   ② click：投真鼠标按下抬起 → 该翻页（"点任意处"不能因为修空格被牺牲）
+#   ③ click_arm：再点一下，作用是把键盘焦点交到那张全屏按钮手上（玩家的真实动作序列）
+#   ④ space_warm：就在③之后按空格 → 该翻页。这一趟才是玩家报的那件事。
+#   ⑤ space_slow：按本作默认的 32 字/秒打字，打到一半投第一下空格——这一下只许"打完"，
+#      第二下才翻页。补了 dismiss_unfocused 之后最容易顶掉的就是这条。
+#   ⑥ card_space：扉页那一屏（没有 SayBehavior，dismiss_unfocused 管不到）投空格 →
+#      该收掉。玩家报的是"空格不能到下一句"，而"下一句"在这本作里出现 25 次扉页、
+#      若干次结算——只在对白上修好，等于修了一半。
+#   ⑦ result_space：结算页同样投一次。它和扉页的差别是焦点默认落在"继续"那颗按钮上，
+#      全屏按钮只是垫底——两种现场都得各自量一遍。
+#   ⑧ spot_reclick：热点翻过一遍之后那颗装订孔还接不接点击（玩家报的第二件）。
+#      同一个坐标投两次，两次都该把 ("spot", id) 交回来，而 found 只记一条。
+# 投的是真按键（KSPACE）而不是 queue_event("dismiss")：前者把键位表翻译那一半也一起验了。
+# 五句都用真角色走 script，不用 show screen say——后者不经过 Character，
+# SayBehavior 根本不在树上，测出来永远是"过"。
+# 翻页必须发生在注入之后：没投之前自己走了（自动前进／语音），闸门就是在给自己发证书。
+# 计数走 config.periodic_callbacks（不是 periodic_callback：那一个只在建窗时被抄进表里，
+# 运行时再赋值等于没挂），一拍约 50 毫秒，所以下面的数目是"拍"不是"帧"。
+label keytest:
+    python:
+        import json as _kt_json
+        import os as _kt_os
+        import pygame as _kt_pg
+        import renpy.test.testmouse as _kt_tm
+        _kt = {"ticks": 0, "phase": None, "out": {}}
+        _kt_plan = {
+            "space_cold": [(60, "space")],
+            "click": [(60, "click")],
+            "click_arm": [(60, "click")],
+            "space_warm": [(60, "space")],
+            "space_slow": [(6, "space"), (60, "space")],
+            "card_space": [(60, "space")],
+            "result_space": [(60, "space")],
+            "spot_reclick": [(60, "spot"), (120, "spot")],
+        }
+        # 这几项存在 persistent 里，跑完不还原就等于把玩家的下一次开档改成"无声＋无过渡"。
+        _kt_pref = [preferences.afm_enable, preferences.auto_forward, preferences.text_cps,
+                    preferences.transitions, preferences.self_voicing]
+        preferences.afm_enable = False      # 自动前进会让"注入之后才翻页"这条白过
+        preferences.auto_forward = False
+        preferences.text_cps = 0            # 只有 space_slow 那一趟要打字，别的全走快路
+        preferences.transitions = False
+        preferences.self_voicing = False
+
+        def _kt_space():
+            _kt_pg.event.post(_kt_pg.event.Event(_kt_pg.KEYDOWN, unicode=u" ", key=_kt_pg.K_SPACE,
+                                                 scancode=0, mod=0, repeat=False))
+            _kt_pg.event.post(_kt_pg.event.Event(_kt_pg.KEYUP, key=_kt_pg.K_SPACE,
+                                                 scancode=0, mod=0, repeat=False))
+
+        def _kt_click():
+            _kt_pg.event.post(_kt_pg.event.Event(_kt_pg.MOUSEBUTTONDOWN, button=1, pos=(30, 30)))
+            _kt_pg.event.post(_kt_pg.event.Event(_kt_pg.MOUSEBUTTONUP, button=1, pos=(30, 30)))
+
+        def _kt_spot():
+            # 点在真热点的格子上。用的不是自己算出来的像素，而是引擎自带的虚拟鼠标
+            # （renpy.test.testmouse）：`draw.mouse_event` 之后紧跟的一句
+            # `testmouse.get_mouse_pos(x, y)` 会把位置整个覆盖掉，而它收的就是游戏
+            # 坐标——窗口大小／DPI／信箱化这三层换算一概不用自己做。
+            # 两条试过的死路：① 拿 `get_physical_size()` 换算——它对这一档窗口缩放
+            # 是错的，点到的位置离那颗坑差了小半个屏幕，两下全空；② 投一条合成
+            # MOUSEMOTION 再用 `renpy.get_mouse_pos()` 反量——那只读真实指针，
+            # 合成的 MOTION 它不看，量回来永远 (0,0)。（点击事件本身吃的还是 ev.pos，
+            # 所以别处那几下 (30,30) 照常有效。）
+            _gx = int(round(_kt["spot_xy"][0] * config.screen_width))
+            _gy = int(round(_kt["spot_xy"][1] * config.screen_height))
+            _rec = _kt["out"][_kt["phase"]]
+            _rec["game"] = [_gx, _gy]
+            _kt_tm.click_mouse(1, _gx, _gy)
+
+        def _kt_dump():
+            d = _kt_os.path.join(config.basedir, "shots")
+            if not _kt_os.path.isdir(d):
+                _kt_os.makedirs(d)
+            with open(_kt_os.path.join(d, "_keytest.json"), "w", encoding="utf-8") as f:
+                _kt_json.dump(_kt["out"], f, ensure_ascii=False, indent=1, sort_keys=True)
+            for k in sorted(_kt["out"]):
+                v = _kt["out"][k]
+                _x = ""
+                if "returns" in v:
+                    _x = " returns=%s found=%s game=%s" % (
+                        v["returns"], v["found"], v.get("game"))
+                print("[KEY] %s focus=%s at=%s stage=%s shots=%s%s" % (
+                    k, v["focus"], v["at"], v.get("stage") or "-", v["shots"], _x))
+
+        def _kt_cb():
+            _kt["ticks"] += 1
+            f = _kt["ticks"]
+            p = _kt["phase"]
+            if p is None:
+                return
+            rec = _kt["out"][p]
+            if f in (2, 6, 20):        # 焦点是渲染完才落定的，多量几次取最后一个非空
+                _d = renpy.display.focus.get_focused()
+                if _d is not None:
+                    rec["focus"] = type(_d).__name__
+                # 台上站的是谁：这一拍 say 语句已经跑过，角色那句 bb_stage 也该跑过了。
+                rec["stage"] = rec.get("stage") or bb_stage_probe()
+            for (_t, _what) in _kt_plan[p]:
+                if f == _t:
+                    rec["shots"].append(f)
+                    if _what == "space":
+                        _kt_space()
+                    elif _what == "spot":
+                        _kt_spot()
+                    else:
+                        _kt_click()
+            if f == 260:
+                # 注入没接住就一直卡在这一句。到此收档：把"没翻页"这件事写盘，然后退。
+                # 逃逸走 renpy.quit() 而不是再投一个键——焦点在谁手上正是要测的未知量。
+                rec["at"] = None
+                _kt_dump()
+                preferences.afm_enable, preferences.auto_forward, preferences.text_cps, \
+                    preferences.transitions, preferences.self_voicing = _kt_pref
+                renpy.quit()
+
+        config.periodic_callbacks.append(_kt_cb)
+
+    python:
+        def _kt_phase(name):
+            _kt["out"][name] = {"focus": None, "at": None, "shots": [], "stage": ""}
+            _kt["phase"] = name
+            _kt["ticks"] = 0
+        _kt_phase("space_cold")
+    N "没点过之前，空格该把这一句推走。"
+    $ _kt["out"]["space_cold"]["at"] = _kt["ticks"]
+
+    $ _kt_phase("click")
+    SHEN "这一句该被投进来的那一下点击推走。"
+    $ _kt["out"]["click"]["at"] = _kt["ticks"]
+
+    $ _kt_phase("click_arm")
+    N "点这一下，是为了下一句能按空格。"
+    $ _kt["out"]["click_arm"]["at"] = _kt["ticks"]
+
+    $ _kt_phase("space_warm")
+    ME "点过一下之后，这一句还得能被空格推走。"
+    $ _kt["out"]["space_warm"]["at"] = _kt["ticks"]
+
+    python:
+        _kt_phase("space_slow")
+        # 本作默认就是这个速度（00_settings 里 preferences.text_cps = 32）。
+        # 第 6 拍约 0.3 秒、才打出九个字，所以这一拍投下去时空着半句没打完。
+        preferences.text_cps = 32
+    N "打到一半时按下的第一下空格，只该把剩下的字摆齐，不该把这一句翻过去。"
+    $ _kt["out"]["space_slow"]["at"] = _kt["ticks"]
+
+    $ preferences.text_cps = 0
+    $ _kt_phase("card_space")
+    # 同一件事还有两处落点：扉页和结算页垫的也是"点任意处"全屏按钮，可那一屏
+    # 根本没有 SayBehavior，dismiss_unfocused 管不到——空格得由这两屏自己接。
+    # 两屏分开投：结算页另外挂着一颗 default True 的"继续"，焦点在它手上，
+    # 和扉页不是同一种现场（"写法一样"是猜测，不是实测）。
+    call screen bb_card("第一章", "空格闸门", "这一屏没有那句对白，空格也得把页面收掉。", "")
+    $ _kt["out"]["card_space"]["at"] = _kt["ticks"]
+
+    $ _kt_phase("result_space")
+    call screen bb_result(3, 8, ["空格也得把这一页收掉。"])
+    $ _kt["out"]["result_space"]["at"] = _kt["ticks"]
+
+    # 玩家报的第二件：热点看完就点不动了。这一趟不看键位，看那颗"翻过的装订孔"
+    # 到底还接不接点击——第 60 拍点一次（还没看过，亮着的 92 坑），第 120 拍点
+    # 同一个坐标（已经翻过，换成 46 的孔）。两次都该把 ("spot", id) 交回来，
+    # 而 found 只该记一条：那一格直接数 len(found)，重复一条就报成 5／4。
+    python:
+        _kt_phase("spot_reclick")
+        _kt["spot_xy"] = (0.18, 0.58)          # 就是 DOCK_SPOTS 第一坑的真坐标
+        _kt["out"]["spot_reclick"]["returns"] = []
+        _kt["out"]["spot_reclick"]["found"] = 0
+    $ _kt_spots = [dict(id="invite", x=0.18, y=0.58)]
+    $ _kt_found = []
+    $ _kt_i = 0
+    while _kt_i < 2:
+        call screen bb_explore("bg_dock", _kt_spots, _kt_found, "重看闸门")
+        $ _kt_r = _return
+        $ _kt["out"]["spot_reclick"]["returns"].append(list(_kt_r))
+        if _kt_r[0] == "spot" and _kt_r[1] not in _kt_found:
+            $ _kt_found.append(_kt_r[1])
+        $ _kt_i = _kt_i + 1
+    $ _kt["out"]["spot_reclick"]["found"] = len(_kt_found)
+    $ _kt["out"]["spot_reclick"]["at"] = _kt["ticks"]
+
+    $ _kt["phase"] = None
+    $ config.periodic_callbacks.remove(_kt_cb)
+    $ _kt_dump()
+    python:
+        preferences.afm_enable, preferences.auto_forward, preferences.text_cps, \
+            preferences.transitions, preferences.self_voicing = _kt_pref
+        renpy.quit()
     return
 
 

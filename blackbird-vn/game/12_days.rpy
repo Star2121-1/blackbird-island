@@ -15,7 +15,6 @@ label day1_pass:
     $ bb_day = "二〇二五年十一月六日"
     $ bb_mood("dust")
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月六日，阴。"
     GU "临东海案二〇〇九年的原始现场勘查记录，我调出来了。共十七页。"
     GU "痕迹分布标注，用了三套不同的编号系统。警方用的是“A-001”到“A-047”。"
@@ -38,7 +37,6 @@ label day2_pass:
     $ bb_day = "二〇二五年十一月八日"
     $ bb_mood("dust")
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月八日，阴转雨。"
     GU "我把陈建国那份死亡证明，又翻了一遍。这次我把目光往下移，移到纸的下半。"
     GU "死亡地点：临海市，望海路十七号。"
@@ -77,7 +75,6 @@ label day3_pass:
     # 六点的杭州天是黑的；夜里那条更不必说。所以整段用夜版阅览室（同一间房，
     # 窗外收黑、台灯那圈亮着），到十一日"白天"那条再换回白昼那张。
     scene bg_hangzhou_night
-    show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十日，清晨。"
     # 终稿这一天有两条笔记：清晨去调户籍（1861），夜里重看那四处淡墨（2035）。
     # 六夜只给六段笔记，所以清晨那条并进这一段的最前面，各留自己的抬头——
@@ -107,7 +104,6 @@ label day4_pass:
     $ bb_day = "二〇二五年十一月十一日"
     $ bb_mood("dust")
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十一日，白天。"
     # 名单是终稿十一月十一日白天从市档案馆调的（2093），十二日清晨才把那七个名字
     # 又核一遍（2262）。六夜只给六段笔记，所以两段并进来、各留自己的抬头——
@@ -144,7 +140,6 @@ label day5_pass:
     $ bb_day = "二〇二五年十一月十三日"
     $ bb_mood("dust")
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十三日，白天。"
     GU "手稿写到，那只空杯被收走。"
     GU "那个姓陈的经手人，在户籍上已经不在了。这件事，我前几日已经查过。"

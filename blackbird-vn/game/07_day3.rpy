@@ -37,13 +37,10 @@ label ch10:
     N "大厅那头，有人下来了。脚步声，很轻。"
     N "沈南舟。"
     N "他没有看我手里的纸。他站定，隔着一段雾，没有走近。"
-    show spr_shen as talker at bb_talk_r
     SHEN "早上的茶，我让人送过去了。"
     N "他说的，不是那个记号。他从来不提。"
-    show spr_me as talker at bb_talk_r
     ME "嗯。"
     N "他转身。走之前，停了一下。"
-    show spr_shen as talker at bb_talk_r
     SHEN "那只空着的，"
     SHEN "不用收。"
     N "他说的是那只杯。他站在桌的这一头，我站在雾里，看着那一头。"
@@ -61,7 +58,6 @@ label ch11:
     N "赵寒回来了。这一次，他手里没有纸角。"
     N "他把二〇〇九那一叠从牛皮纸袋里取出来，摊在八仙桌上。"
     N "纸不多。就几页，黄的。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "我父亲查到的是这一页。"
     N "没有人动。"
     N "他指着一个地方。一个名字，一个现场，一个记号。"
@@ -69,23 +65,18 @@ label ch11:
     N "停了一下。"
     ZHAO "不是陈建国。"
     N "大厅里静了很久。"
-    show spr_me as talker at bb_talk_r
     ME "那他是谁？"
     N "赵寒没有回答我。他看着那几页纸。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "我不知道。"
     N "苏蔓开口了。"
-    show spr_su as talker at bb_talk_r
     SU "你把这一叠留下，不是想查清，是想认账。"
     N "赵寒没有接。"
     SU "先停手的是你父亲，还是你？"
     N "赵寒把那几页合上。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "我父亲只留了一句话。就一句。"
     N "他学他父亲的口吻。学得很慢，像隔着十年，才把那口气接回来。"
     ZHAO "查下去，就查到你自己头上。"
     N "这句话落下去的时候，我看见沈南舟的手动了一下。"
-    show spr_shen as talker at bb_talk_r
     N "沈南舟站在桌边，没有碰那叠纸。他看着我，隔着一层薄雾。"
     SHEN "先生，那叠里的“陈”，我不提。"
     N "他停了一停，转向空着的那只杯子。"
@@ -107,7 +98,6 @@ label ch12:
     N "周亦安把三张纸并到一张桌上。"
     N "左边，位置C的勘查页。中间，那张立牌的记录。右边，一张空白的纸。"
     N "左边那一张，是沈南舟那天散场前折回四折、收进桌下抽屉的。它回到了桌上。谁开的抽屉，没有人说破。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "有意思的是，"
     ZHOU "前两页，我认为是同一个人做的。"
     N "他指着左边。"
@@ -118,7 +108,6 @@ label ch12:
     ZHOU "摆，是伪造一个现场。立牌，是把它记进“非正常死亡”里。我推断，做这两件事的，是同一个人。"
     N "没有人接话。"
     N "方廷开口。"
-    show spr_fang as talker at bb_talk_r
     FANG "从法律角度来说，"
     FANG "周先生推断的，我不否认。但我要把它拆开。"
     FANG "伪造一个现场，需要一个制造者。留下一个记号，需要一个守望者。这两样，可以是两个人。也可以是同一个人。"
@@ -129,11 +118,9 @@ label ch12:
     FANG "但那个记号，指向了一个姓。"
     FANG "陈。"
     N "林晚开口了。"
-    show spr_lin as talker at bb_talk_r
     LIN "二〇〇九年。位置C那具尸体，九到十时已经死了。撞车，十点四十七。"
     LIN "中间，至少四十七分钟。"
     N "周亦安看着她。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "四十七分钟，够一个人做三件事。摆。立牌。签上自己的名字。"
     N "他把那张空白的纸翻过来。背面，一个字也没有。"
     ZHOU "这一张，是空的。留下这一张的人，把名字空掉了。做这件事的人，此刻在不在场？"
@@ -143,7 +130,6 @@ label ch12:
     ZHOU "中间这一段，没有人愿意认领。"
     N "大厅里静了很久。"
     N "赵寒走过来。他站在那三张纸前，没有碰。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "二〇〇九那一叠。我父亲查到的是它的一半。"
     N "他没有说另外那一半是什么。"
     N "我回到自己的位子上，"
@@ -162,30 +148,23 @@ label ch13:
     N "二十年来，他每年回来，待一夜。但这一夜，他不是待。"
     N "他取回一只木匣。打开。"
     N "一张照片。黑白的。一个男人的脸。边角磨得起了毛——比别处那张，更旧。"
-    show spr_zhao as talker at bb_talk_r
     N "赵寒站在原地，没有动。"
     ZHAO "就是它。"
     N "他没有说下去。"
     scene bg_hall_table
-    show spr_shen as talker at bb_talk_r
     N "沈南舟没有说那是谁。他把照片放在八仙桌上，正对着那只空杯。"
     SHEN "二〇〇九年，他就不在了。"
     N "大厅里，没有人接话。"
     N "我注意到一个没有人注意到的东西。沈南舟姓沈。照片背面写的，是“陈默”。"
     N "如果那真是他的儿子，为什么那个孩子不姓沈？这件事，我把它问出来了。没有人，把它问下去。"
     N "苏蔓看着那张脸。"
-    show spr_su as talker at bb_talk_r
     SU "你守着，守的不是那叠牌。是这张脸。"
     N "沈南舟没有否认，也没有承认。"
-    show spr_me as talker at bb_talk_r
     ME "沈先生，那张脸，为什么封在只有一间房里？"
-    show spr_shen as talker at bb_talk_r
     SHEN "因为，该知道的人，已经不多了。"
     N "苏蔓转向我。"
-    show spr_su as talker at bb_talk_r
     SU "你认得这张脸吗？"
     N "静得能听见雾。"
-    show spr_me as talker at bb_talk_r
     ME "我不知道。"
     N "那张脸在灯下很旧。我盯着它，几乎要以为是我。"
     N "不是我。是我记不清了。"

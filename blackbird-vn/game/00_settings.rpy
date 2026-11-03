@@ -63,6 +63,14 @@ init 5 python:
     # PageUp/Down 回看、F1 帮助、S 截图（README 已写）、v 朗读（设置里有同一格的开关）。
     config.keymap["choose_renderer"] = []
     config.keymap["hide_windows"] = []
+    # 空格挂进 dismiss_unfocused：引擎那句对白的 SayBehavior 只在自己拿着键盘焦点时
+    # 才认 dismiss 那一格，而默认焦点经不起一次点击——玩家照界面上那句"点击继续"
+    # 点过一下，焦点就交到对白页那张全屏按钮手上，空格从此没人接（实测料在
+    # shots/_keytest.json 的 space_warm 那一趟：修之前 focus=Button、翻页没发生）。
+    # 只补 K_SPACE，不补 K_RETURN：回车仍归 button_select，玩家用方向键走到哪颗按钮，
+    # 回车就该按下那一颗。逐字打字时先由 Text 把这一口吞掉（打完），第二口才翻页——
+    # 这条路是给"焦点不在对白上"补的，不是给"跳过正文"开的。
+    config.keymap["dismiss_unfocused"] = ["K_SPACE"]
 
 
 # ---------- 令牌：色 ----------
@@ -285,23 +293,26 @@ style bb_bar is bar:
 
 # ---------- 立绘位置 ----------
 # 台词页占下 28%，立绘的脚要站在页面上沿，不然句子正好盖住它说的那只手。
+# 760→700：立绘画布从 1080 高换成 680 高（头顶钉在第 60 行、往下统一截 620），
+# 沿用 760 等于把整个人放大 1.12 倍，头顶顶到屏幕 9% 处，快贴到上面那排按钮。
+# 700 这一档头顶落在 15%——人还是比原来大一圈，但不再顶天。
 transform bb_talk_r:
     xalign 0.16
     yalign 0.735
     yanchor 1.0
-    ysize 760
+    ysize 700
 
 transform bb_talk_l:
     xalign 0.84
     yalign 0.735
     yanchor 1.0
-    ysize 760
+    ysize 700
 
 transform bb_talk_c:
     xalign 0.5
     yalign 0.735
     yanchor 1.0
-    ysize 760
+    ysize 700
 
 
 # ---------- 动效 ----------
@@ -319,17 +330,63 @@ transform bb_still:
 # ---------- 角色 ----------
 # who_color 一律墨色：说话人的身份由姓氏 + 席次承担，不由色相承担。
 # 锈红整本只说一件事——有人被证据抵住了，停了下来。
-define N = Character(None, what_color=bb_ink, what_font=bb_serif)
-define SHEN = Character("沈南舟", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define ZHOU = Character("周亦安", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define LIN = Character("林晚", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define SU = Character("苏蔓", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define ZHAO = Character("赵寒", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define FANG = Character("方廷", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define WANG = Character("王剑", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define ME = Character("陈默", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
-define GU = Character("顾言笙", who_color=bb_pencil, what_color=bb_ink, what_font=bb_serif)
-define BB = Character("黑鸟", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+init python:
+    from renpy.character import ADVCharacter
+
+    # 每一句台词把说话人摆上台。原先是剧本里那 186 条 `show … as talker`，
+    # 只在一个人第一次开口时写了一次：苏蔓说完，下一句是沈南舟的旁白，
+    # 台上站的还是苏蔓——玩家读到的是"她在说这句"。所以这一条改由角色自己负责，
+    # 每句开口之前先换脸，剧本里不再手写 show（闸门盯着：一条都不许留回来）。
+    #
+    # 旁白（N，没有 who）算陈默的：这本子是第一人称，那些句子是他写进卷宗的。
+    # 名单之外的人（黑鸟没有立绘）不动台——它一次也没在剧本里开过口。
+    # 台上只用一张人脸的标签：spr_ 打头的那些。换人＝把别人的脸从天上摘掉，
+    # 再把新脸挂上——不写 `as talker` 而让标签就是人名，理由在探针那一节。
+    def bb_stage(who):
+        key = "spr_me" if who is None else SPR_FOR.get(who)
+        if key is None:
+            return
+        for t in renpy.get_showing_tags():
+            if t.startswith("spr_") and t != key:
+                renpy.hide(t)
+        renpy.show(key, at_list=[bb_talk_r])
+
+    # 台上站的到底是哪张脸。dev 闸门用，剧本一行也不调它。
+    # 为什么要有这一只探针：`renpy.show()` 收的是 `tag=`（写成 `show_args=` 不报错，
+    # 到运行才炸），而 lint 不执行 say 语句——第一句旁白就把整本打死，静态面看不见；
+    # 光看图也证不出来，换人前后可以画的是同一张脸。
+    # 于是标签不许再叫 talker：`show spr_lin as talker` 走到 scenelists.py:410 时
+    # 名字已经被改写成一元组 ("talker",)，"spr_lin" 这一截在引擎里就地丢掉，
+    # 任何公开接口都问不回来（实测 `renpy.showing("spr_lin")` 是假，attributes 是空）。
+    # 标签留成人名的话，台上是谁＝master 层上那一个 spr_ 标签，不用碰 internals。
+    def bb_stage_probe():
+        for t in renpy.get_showing_tags():
+            if t.startswith("spr_"):
+                return t
+        return ""
+
+    # store 里那个 `Character` 是工厂函数（renpy/character.py:1704），不是类——
+    # 拿它当基类，lint 在 init 阶段就炸 `TypeError: function() argument 'code'
+    # must be code, not str`，接着把十二个 who 全报成"Could not evaluate"。
+    # 真正的类是 ADVCharacter；工厂只是 `type(kind)(name, kind=kind, **属性)`
+    # 一层皮，而 kind=None 的兜底（`kind = renpy.store.adv`）本来就写在
+    # ADVCharacter.__init__ 里，所以直接 new 子类和走工厂拿到的是同一个东西。
+    class BBChar(ADVCharacter):
+        def __call__(self, what, *args, **kwargs):
+            bb_stage(self.name)
+            return super().__call__(what, *args, **kwargs)
+
+define N = BBChar(None, what_color=bb_ink, what_font=bb_serif)
+define SHEN = BBChar("沈南舟", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define ZHOU = BBChar("周亦安", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define LIN = BBChar("林晚", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define SU = BBChar("苏蔓", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define ZHAO = BBChar("赵寒", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define FANG = BBChar("方廷", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define WANG = BBChar("王剑", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define ME = BBChar("陈默", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
+define GU = BBChar("顾言笙", who_color=bb_pencil, what_color=bb_ink, what_font=bb_serif)
+define BB = BBChar("黑鸟", who_color=bb_ink, what_color=bb_ink, what_font=bb_serif)
 
 
 # ---------- 声音 ----------

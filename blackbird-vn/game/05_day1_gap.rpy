@@ -14,32 +14,22 @@ label ch2:
     N "菜肴是精致的法式料理，但没有人真正在吃。每个人都在观察，在试探，在从对方的表情和言语中打捞信息。"
     N "庄园里有两个仆从。他们出现，又消失，一句话都不说。"
     N "王剑是最先开口的。"
-    show spr_wang as talker at bb_talk_r
     WANG "我不明白您的意思。你说我们与十年前的案子有关——哪一桩案子？又是如何关联的？"
-    show spr_shen as talker at bb_talk_r
     SHEN "临东海，二〇〇九年十一月十七日晚十点四十七分。临东海大桥西侧匝道，一辆黑色轿车与一名行人发生碰撞。行人记录为当场死亡，肇事车辆逃逸。今天是二〇一九，整整十年。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "我知道这起案子。"
     ZHAO "但那是桩悬案。你怎么会把我和那件事联系起来？"
-    show spr_shen as talker at bb_talk_r
     SHEN "赵先生曾是交警部门的工作人员，对吗？"
     SHEN "二〇〇九年十一月，你负责临东海大桥附近的巡逻勤务。案发当晚，你的巡逻车经过了事故现场附近——但事故记录中，没有你的出警时间。"
     N "赵寒的脸色变了一瞬。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "所以呢？"
-    show spr_shen as talker at bb_talk_r
     SHEN "我没说任何负面的事情。"
     SHEN "我只是在陈述事实。事实是：案发当晚，你在现场附近，但没有介入。你是故意的，还是因为其他原因？这些问题，我希望你能在接下来几天里找到答案。"
-    show spr_wang as talker at bb_talk_r
     WANG "这算什么？审问？"
-    show spr_shen as talker at bb_talk_r
     SHEN "是回忆。"
     SHEN "我希望你们每个人都能回忆起那晚发生了什么。因为……我相信，你们当中有人知道真相。"
     N "他举杯，目光再次扫过所有人。"
     SHEN "游戏是这样的：在你们各自探索的过程中，我会设置一些线索。这些线索将引导你们逐步接近真相。但真相有两个层次——你们会发现的第一个真相，可能不是最终的真相。"
-    show spr_su as talker at bb_talk_r
     SU "你是什么意思？"
-    show spr_shen as talker at bb_talk_r
     SHEN "你们每个人看到的，都只是故事的一部分。只有当所有碎片拼合在一起时，才能看到完整的图景。而在那之前——不要相信任何人，也不要完全相信你自己。"
     N "他看了一眼墙上的钟。"
     SHEN "晚上九点，这里见。希望到时候，各位都能带回来一些有趣的信息。"
@@ -64,13 +54,11 @@ label ch2:
 label ch4:
     call screen bb_card("第四章", "档案", "像是在等我们找到。", "十一月十七日", BB_SNAP("bg_study.jpg"))
     scene bg_study
-    show spr_su as talker at bb_talk_r
     N "苏蔓从书架最里侧的暗格里抽出一个牛皮纸袋。"
     N "我打开纸袋，里面是一叠照片。边缘已经泛黄，但保存得相当完好。"
     scene bg_bridge_night
     N "第一张照片上是一座桥——临东海大桥，雨夜，路灯在积水的路面上投下破碎的光。"
     scene bg_study
-    show spr_su as talker at bb_talk_r
     N "第四张照片上，有一个人。他蹲在草丛里，背对着镜头，手里似乎在挖什么。"
     SU "这是谁？"
     N "因为我的目光落在照片右下角印刷的日期戳上："
@@ -86,7 +74,6 @@ label ch4:
     SU "你根本证明不了？"
     N "书房门外传来脚步声。很轻，但规律——和那张纸条留下的步频一样。"
     N "门开了。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "你们也在看这些。"
     ME "你怎么知道这是临东海大桥？"
     N "赵寒没有直接回答。他走到窗边，背对着我们，看了一会儿外面的黑。"
@@ -104,7 +91,6 @@ label ch4:
     call bb_search("bg_study", "书房 · 暗格里的纸袋", STUDY_SPOTS_D1)
     $ bb_day = "二〇二五年十一月四日"
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     N "十一月四日，晴。"
     GU "备忘录的内容只有一段话："
     N "关于临东海大桥交通事故，经初步核查，肇事车辆已确认。但因涉及相关人员利益，建议暂不公开车牌信息，待进一步调查后再做处理。"
@@ -123,7 +109,6 @@ label ch4:
 label ch5:
     call screen bb_card("第五章", "夜话", "窗外传来海浪撞击礁石的声音。", "十一月十七日", BB_SNAP("bg_study_night.jpg"), mood="night")
     scene bg_study_night
-    show spr_su as talker at bb_talk_r
     N "窗外传来海浪撞击礁石的声音，规律而沉闷，像某种缓慢的心跳。"
     ME "你在看什么？"
     SU "我在数。"
@@ -131,7 +116,6 @@ label ch5:
     SU "沈南舟留了话，让我们在大厅集合。"
     SU "他可能知道一切。"
     N "书房门被推开了。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "找东西。"
     ZHAO "你们找到了照片？"
     ME "一个挖坑的人。位置C。"
@@ -141,23 +125,18 @@ label ch5:
     ZHAO "避险车道从桥底绕回西侧。它的尽头，距撞击点十二米。"
     ME "不是说死者是被车撞死的吗？"
     ZHAO "真正导致死亡的原因，不在车祸里。"
-    show spr_su as talker at bb_talk_r
     SU "那你告诉我们。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "那晚我值班。我经过临东海大桥的时候，看到了一辆车撞了人。"
     ZHAO "没下车。"
     ZHAO "我本来不该在那儿。"
     ZHAO "但我去那儿，是为了等一个人。"
-    show spr_su as talker at bb_talk_r
     SU "你刚才说尸体是在位置C发现的。可档案写的是，尸体在撞击点附近。位置C和撞击点，不是同一个地方。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "对。"
     ZHAO "差十二米。"
     ZHAO "我父亲问过。"
     ZHAO "然后我就辞职了。"
     ZHAO "有些事，我父亲当年没做完。我想做完。"
     N "门在他身后关上。"
-    show spr_su as talker at bb_talk_r
     SU "那肇事者就不是关键。真正的凶手，是那个在车祸后出现的人。"
     ME "照片上的人。"
     SU "他与陈默有关。"
@@ -170,7 +149,6 @@ label ch5:
     N "我只知道一件事：我隐约觉得，自己对那晚的死亡负有某种责任。"
     $ bb_day = "二〇二五年十一月五日"
     scene bg_hangzhou
-    show spr_gu as talker at bb_talk_r
     N "十一月五日，阴。"
     GU "但王剑在案发后第三天提交了“自首书”，声称自己不是肇事者，只是目击者。"
     N "矛盾在哪里？"

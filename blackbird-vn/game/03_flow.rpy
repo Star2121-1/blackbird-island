@@ -59,6 +59,8 @@ label start:
     $ round5 = Debate(SEATS, ROUND5, bullets=4, label="东翼门外 · 第五轮", head="第五夜 · 结算")
     if bb_dev and os.environ.get("BB_SHOT"):
         jump shot_all
+    if bb_dev and os.environ.get("BB_KEYTEST"):
+        jump keytest
     jump story
 
 
@@ -66,7 +68,6 @@ label start:
 label story:
     scene bg_hangzhou
     N "二〇二五年，十一月。市档案馆的阅览室。"
-    show spr_gu as talker at bb_talk_r
     GU "我两年前在旧货市场淘到这本手稿。它记录的岛事，在二〇一九年的深秋。"
     GU "手稿的每一页，我都编了号。笔记里引用手稿原文的地方，我都标了页码。"
     GU "今天我要读的那几页，是第一日。"
@@ -96,7 +97,6 @@ label ch1:
     scene bg_manor_ext
     N "渡轮靠岸时，我看见一座白色的建筑物矗立在礁石之上。此刻它灯火通明，像黑暗中一只睁开的眼睛。"
     N "庄园门口站着一个人。"
-    show spr_shen as talker at bb_talk_r
     SHEN "你就是陈默？"
     ME "是。"
     SHEN "我是沈南舟，这栋庄园的主人。欢迎你来。"
@@ -115,16 +115,12 @@ label ch1_hall:
     call screen bb_card("第一章", "大厅", "大厅里已经有五个人了。", "十一月十七日", BB_SNAP("bg_hall_long.jpg"))
     scene bg_hall_long
     N "靠窗的位置坐着一个男人，穿黑色风衣，正在看手机。他抬头看了我一眼，眼神锐利得像刀。"
-    show spr_zhao as talker at bb_talk_r
     ZHAO "赵寒。"
     N "然后他低下头继续看手机。"
-    show spr_su as talker at bb_talk_r
     SU "苏蔓，记者。"
     N "壁炉旁边站着一个年轻女人，手里拿着一个笔记本，正在快速记录着什么。她抬头，对我微微一笑。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "周亦安，犯罪心理学。方廷。"
     N "沙发上有两个人正在低声交谈。白色衬衫的中年男人点点头，算是打招呼。"
-    show spr_lin as talker at bb_talk_r
     LIN "林晚，法医。"
     LIN "你好。"
     N "她的声音平淡，像在读一份尸检报告。目光在我身上停留了一秒。"
@@ -136,9 +132,7 @@ label ch1_hall:
     N "潮汐变化很快，傍晚六点以后渡轮就不再返回了。"
     ME "意思是：我们被困在这里了。"
     N "我去了一楼唯一的空房间放下行李，回到大厅时，王剑也回来了。"
-    show spr_wang as talker at bb_talk_r
     WANG "都到齐了。沈先生，你把我们叫到这里，到底有什么事？"
-    show spr_shen as talker at bb_talk_r
     SHEN "各位都是聪明人，我相信你们收到了我的邀请函。我也相信你们和我一样，对十年前的临东海事件有所耳闻。"
     N "这五个字像一道闪电，劈开了我记忆深处某种淤塞的东西。"
     ZHOU "陈默？"
@@ -170,8 +164,13 @@ label bb_search(bg, place, spots):
         if _return[0] == "leave":
             $ leaving = True
         else:
-            $ found.append(_return[1])
-            call expression "spot_" + _return[1]
+            # 翻过的坑现在也点得动（重看）。这一行不许把同一个 id 再塞一遍：
+            # "看过 N ／ M"那格直接数 found 的长度，重复一条就报成 5／4，
+            # 而"看完才能走"的那道闸门也会提前开。
+            $ _sid = _return[1]
+            if _sid not in found:
+                $ found.append(_sid)
+            call expression "spot_" + _sid
     scene expression bg
     return
 
@@ -239,7 +238,6 @@ label ch3:
     N "我在庄园里走了大约二十分钟。我把客人数了一遍。受邀的七位，来了七位。没有人缺席。"
     N "我把这个数先放一放。暂时，我没有对这一个数发问。"
     scene bg_study
-    show spr_su as talker at bb_talk_r
     SU "你刚才去哪了？"
     ME "找沈南舟。有人留了张纸条。"
     N "我把那张纸递给她。她低头看了几秒，眉头皱了起来。"
@@ -309,7 +307,6 @@ label ch6:
     call screen bb_card("第六章", "大厅", "每人只有一次机会——说完就要等下一个人。", "十一月十七日", BB_SNAP("bg_hall_ring.jpg"))
     scene bg_hall_ring
     N "九点的钟声敲响时，大厅里已经坐满了人。长桌被撤走，换成了环形沙发。八个人围坐，中间留着一张矮木几，几面空着。"
-    show spr_shen as talker at bb_talk_r
     SHEN "各位，感谢配合。我知道你们各自都有事要做，但今晚只有一个目的——让每个人都亲口说出，二〇〇九年十一月十七日那晚，你做了什么。"
     SHEN "顺序随便。谁先说，谁后说。但每人只有一次机会——说完就要等下一个人。中途不能反悔。"
     N "我注意到：沈南舟的无名指微微弯曲。旧骨折。"
@@ -329,40 +326,28 @@ label ch6:
     # 手稿在第一日夜里还有"下一个环节"：第二组照片。省略它，第十三章那句
     # "边角磨得起了毛——比别处那张，更旧"就没有可比的另一张，
     # 而证据栏里"和照片上那人蹲着的袖口一样"讲的近拍也是这一组给的。
-    show spr_shen as talker at bb_talk_r
     SHEN "好。下一个环节。"
     N "他站起身，走到墙边，从一幅挂画后面取下一个小盒子。盒子里是一叠照片——比我们在书房看到的那批更旧。"
     SHEN "这是第二组。来自另一个角度。"
     N "他把照片一张一张摊在中央的矮木几上。第一张是临东海大桥的远景。第二张是桥下的礁石。第三张是桥东侧匝道下方的避险车道。"
     N "车道尽头，草丛里有一个蹲着的人。"
     N "和我们在书房看到的那张照片，是同一个人。但角度不同——这张更近，能看清连帽衫的拉链，和袖口处一个小小的绣标。"
-    show spr_su as talker at bb_talk_r
     SU "你们看到那个绣标了吗？"
-    show spr_me as talker at bb_talk_r
     ME "没看清。"
-    show spr_su as talker at bb_talk_r
     SU "我拍下来了。"
     N "沈南舟没有回应。他把最后一张照片放在桌上。"
     N "这张照片上，是一个人的正脸。年轻，大约二十岁，短发，眼睛很亮。他站在一栋建筑前，手里拿着一本打开的书，像刚参加完某场毕业典礼。"
     N "照片背面用红笔写着：陈默，2009年，临海市。"
-    show spr_lin as talker at bb_talk_r
     LIN "这是你儿子？"
     N "沈南舟没有回答。她把同一句又问了一遍，声音比第一次大。"
-    show spr_lin as talker at bb_talk_r
     LIN "这是你儿子？"
-    show spr_shen as talker at bb_talk_r
     SHEN "我不知道你们想知道什么。我只知道，你们需要看到这张照片。"
-    show spr_zhou as talker at bb_talk_r
     ZHOU "为什么不直接告诉我们名字？沈南舟，你儿子的名字——陈默？"
-    show spr_shen as talker at bb_talk_r
     SHEN "陈先生，您觉得，他应该叫什么？"
     N "我坐在沙发上，没有回答。那张照片上的脸，和我不一样。我知道不一样。"
     N "但我不该知道不一样。"
-    show spr_su as talker at bb_talk_r
     SU "你确定，你和他没有关系？"
-    show spr_me as talker at bb_talk_r
     ME "我……"
-    show spr_shen as talker at bb_talk_r
     SHEN "你不确定，对吗？"
     N "我没有回答。因为我确实不确定。"
     # 终稿 1068–1114：散场这一段里，王剑拒绝去码头，又从他不该出现的那一侧出去。
@@ -370,16 +355,11 @@ label ch6:
     # 靠的是今晚这一页——不演，第五夜就是在凭空指人。
     SHEN "好了。第一轮结束。各自回房休息。明天早上九点，这里见。"
     SHEN "还有一件事。王剑先生——你明天早上需要去一趟码头。潮水六点以后就涨起来了。"
-    show spr_wang as talker at bb_talk_r
     N "王剑坐在沙发的一角，手里握着一个玻璃杯，杯中的水已经凉了。"
     WANG "我不去。"
-    show spr_shen as talker at bb_talk_r
     SHEN "你知道规矩。"
-    show spr_wang as talker at bb_talk_r
     WANG "我知道。"
-    show spr_shen as talker at bb_talk_r
     SHEN "你不是在“拒绝”，你是在“选择”。这两者有区别。"
-    show spr_wang as talker at bb_talk_r
     WANG "好。"
     N "他最后说的那两个字是：我选。"
     N "他站起身，把杯子放在桌上，转身向门口走去。门在他身后关上。"
@@ -390,7 +370,6 @@ label ch6:
     N "她指了指右侧。"
     SU "他刚才出去的时候，是右侧。"
     N "林晚的脸色变了。"
-    show spr_lin as talker at bb_talk_r
     LIN "这个庄园，我只看过结构图。是二〇〇九年那案子的卷宗里，附的一张。庄园的图，是勘查的人画的。一楼有两个入口。但右侧那扇门，通向的是……"
     SU "码头。"
     LIN "对。"
@@ -474,7 +453,6 @@ label epilogue:
         $ bb_trace("[AUTO] epilogue")
     scene bg_hangzhou_night
     $ bb_day = "二〇二五年十一月十五日"
-    show spr_gu as talker at bb_talk_r
     N "顾言笙的调查笔记。十一月十五日，夜里。"
     GU "把“我是不是”写成“我不知道”的那个人，藏在一个死掉的陈默后面。"
     GU "他抹掉的，是他自己的名字。"
